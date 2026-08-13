@@ -1,0 +1,22 @@
+spring:
+  application:
+    name: ai-engine
+
+  threads:
+    virtual:
+      enabled: true
+
+  datasource:
+    url: jdbc:postgresql://localhost:5433/renaser_db
+    username: postgres
+    password: postgrespassword
+    driver-class-name: org.postgresql.Driver
+
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+
+server:
+  port: 8080
