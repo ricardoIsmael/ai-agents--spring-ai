@@ -2,6 +2,9 @@ spring:
   application:
     name: ai-engine
 
+  config:
+    import: optional:file:./application-secrets.yaml
+
   threads:
     virtual:
       enabled: true
@@ -12,11 +15,36 @@ spring:
     password: postgrespassword
     driver-class-name: org.postgresql.Driver
 
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
   rabbitmq:
     host: localhost
     port: 5672
     username: guest
     password: guest
-
+  ai:
+    ollama:
+      base-url: http://localhost:11434
+      chat:
+        think: false
+        options:
+          model: gemma4:e4b
+      embedding:
+        options:
+          model: qwen3-embedding:0.6b
+    vectorstore:
+      pgvector:
+        index-type: HNSW
+        distance-type: COSINE_DISTANCE
+        dimensions: 1024
+        initialize-schema: true
 server:
   port: 8080
+
+supabase:
+  url: https://ikyjurujfxpazygwloja.supabase.co
+  service-role-key: ${SUPABASE_SERVICE_ROLE_KEY:}
