@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Embudo de selección RENASER</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --color-paper:   #f5f5f3;
+      --color-ink:     #0d0d0d;
+      --color-muted:   #70706b;
+      --color-accent:  #a43b36;
+      --font-sans:     'Geist', system-ui, sans-serif;
+      --font-serif:    'Instrument Serif', serif;
+      --font-mono:     'Geist Mono', ui-monospace, monospace;
+    }
+    body {
+      font-family: var(--font-sans);
+      background: var(--color-paper);
+      color: var(--color-ink);
+      min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      padding: 3rem 2rem;
+    }
+    .frame { max-width: 1200px; width: 100%; }
+    .eyebrow {
+      font-family: var(--font-mono); font-size: 0.66rem; font-weight: 500;
+      letter-spacing: 0.18em; text-transform: uppercase;
+      color: var(--color-muted); margin-bottom: 0.5rem;
+    }
+    h1 {
+      font-family: var(--font-serif);
+      font-size: clamp(1.5rem, 2.4vw + 0.75rem, 2rem);
+      font-weight: 400; letter-spacing: -0.02em; line-height: 1.15;
+      color: var(--color-ink); margin-bottom: 1.5rem;
+    }
+    svg { width: 100%; min-width: 900px; display: block; }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <p class="eyebrow">Proceso · Sistema de selección RENASER</p>
+    <h1>Cómo avanza un candidato, etapa por etapa</h1>
+
+    <svg viewBox="0 0 1240 660" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="embudo-title embudo-desc">
+      <title id="embudo-title">Embudo de selección RENASER</title>
+      <desc id="embudo-desc">Las cinco etapas de evaluación, desde la postulación hasta la decisión final, mostrando el peso de cada etapa en la nota final y los tres momentos donde el sistema descarta candidatos.</desc>
+      <defs>
+        <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#70706b"/></marker>
+        <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#a43b36"/></marker>
+      </defs>
+
+      <rect width="100%" height="100%" fill="#f5f5f3"/>
+
+      <!-- ================= ARROWS FIRST ================= -->
+      <!-- main spine: left to right through the 5 stages -->
+      <line x1="216" y1="240" x2="252" y2="240" stroke="#70706b" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <line x1="416" y1="240" x2="452" y2="240" stroke="#70706b" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <line x1="616" y1="240" x2="652" y2="240" stroke="#a43b36" stroke-width="1.2" marker-end="url(#arrow-accent)"/>
+      <line x1="816" y1="240" x2="852" y2="240" stroke="#70706b" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <line x1="1016" y1="240" x2="1052" y2="240" stroke="#70706b" stroke-width="1.2" marker-end="url(#arrow)"/>
+
+      <!-- discard drops: stage 1, 2, 3 fall down to the discard bar -->
+      <path d="M 156 296 L 156 400 Q 156 408 164 408 L 232 408" fill="none" stroke="#70706b" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+      <path d="M 356 296 L 356 400 Q 356 408 364 408 L 432 408" fill="none" stroke="#70706b" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+      <path d="M 556 296 L 556 400 Q 556 408 564 408 L 632 408" fill="none" stroke="#70706b" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+
+      <!-- ================= STAGE NODES ================= -->
+      <!-- Stage 1 — CV -->
+      <rect x="56" y="184" width="160" height="112" rx="6" fill="#f5f5f3"/>
+      <rect x="56" y="184" width="160" height="112" rx="6" fill="#ffffff" stroke="#0d0d0d" stroke-width="1"/>
+      <rect x="64" y="192" width="16" height="12" rx="2" fill="transparent" stroke="rgba(13,13,13,0.40)" stroke-width="0.8"/>
+      <text x="72" y="201" fill="rgba(13,13,13,0.80)" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">1</text>
+      <text x="136" y="228" fill="#0d0d0d" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">CV y evidencia</text>
+      <text x="136" y="248" fill="#70706b" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">la IA puntúa</text>
+      <text x="136" y="280" fill="#0d0d0d" font-size="20" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">5%</text>
+
+      <!-- Stage 2 — Evaluación Integral -->
+      <rect x="256" y="184" width="160" height="112" rx="6" fill="#f5f5f3"/>
+      <rect x="256" y="184" width="160" height="112" rx="6" fill="#ffffff" stroke="#0d0d0d" stroke-width="1"/>
+      <rect x="264" y="192" width="16" height="12" rx="2" fill="transparent" stroke="rgba(13,13,13,0.40)" stroke-width="0.8"/>
+      <text x="272" y="201" fill="rgba(13,13,13,0.80)" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">2</text>
+      <text x="336" y="228" fill="#0d0d0d" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Evaluación integral</text>
+      <text x="336" y="248" fill="#70706b" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">126–138 preguntas</text>
+      <text x="336" y="280" fill="#0d0d0d" font-size="20" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">20%</text>
+
+      <!-- Stage 3 — Prueba del puesto — FOCAL -->
+      <rect x="456" y="184" width="160" height="112" rx="6" fill="#f5f5f3"/>
+      <rect x="456" y="184" width="160" height="112" rx="6" fill="rgba(164,59,54,0.08)" stroke="#a43b36" stroke-width="1"/>
+      <rect x="464" y="192" width="16" height="12" rx="2" fill="transparent" stroke="rgba(164,59,54,0.50)" stroke-width="0.8"/>
+      <text x="472" y="201" fill="#a43b36" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">3</text>
+      <text x="536" y="228" fill="#0d0d0d" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Prueba del puesto</text>
+      <text x="536" y="248" fill="#a43b36" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">tiempo · cambio a mitad</text>
+      <text x="536" y="280" fill="#a43b36" font-size="20" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">30%</text>
+
+      <!-- Stage 4 — Simulación -->
+      <rect x="656" y="184" width="160" height="112" rx="6" fill="#f5f5f3"/>
+      <rect x="656" y="184" width="160" height="112" rx="6" fill="#ffffff" stroke="#0d0d0d" stroke-width="1"/>
+      <rect x="664" y="192" width="16" height="12" rx="2" fill="transparent" stroke="rgba(13,13,13,0.40)" stroke-width="0.8"/>
+      <text x="672" y="201" fill="rgba(13,13,13,0.80)" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">4</text>
+      <text x="736" y="228" fill="#0d0d0d" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Simulación</text>
+      <text x="736" y="248" fill="#70706b" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">2 h · grupal en sala</text>
+      <text x="736" y="280" fill="#0d0d0d" font-size="20" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">25%</text>
+
+      <!-- Stage 5 — Validación -->
+      <rect x="856" y="184" width="160" height="112" rx="6" fill="#f5f5f3"/>
+      <rect x="856" y="184" width="160" height="112" rx="6" fill="rgba(13,13,13,0.05)" stroke="#70706b" stroke-width="1"/>
+      <rect x="864" y="192" width="16" height="12" rx="2" fill="transparent" stroke="rgba(112,112,107,0.50)" stroke-width="0.8"/>
+      <text x="872" y="201" fill="#70706b" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">5</text>
+      <text x="936" y="228" fill="#0d0d0d" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Validación</text>
+      <text x="936" y="248" fill="#70706b" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">7 días · trabajo real</text>
+      <text x="936" y="280" fill="#0d0d0d" font-size="20" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">20%</text>
+
+      <!-- Decision -->
+      <rect x="1056" y="184" width="128" height="112" rx="6" fill="#f5f5f3"/>
+      <rect x="1056" y="184" width="128" height="112" rx="6" fill="#ffffff" stroke="#0d0d0d" stroke-width="1"/>
+      <text x="1120" y="216" fill="#0d0d0d" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Decisión</text>
+      <circle cx="1084" cy="244" r="6" fill="#2f6e51"/>
+      <text x="1100" y="248" fill="#70706b" font-size="9" font-family="'Geist Mono', monospace">contrata</text>
+      <circle cx="1084" cy="264" r="6" fill="#9b6a22"/>
+      <text x="1100" y="268" fill="#70706b" font-size="9" font-family="'Geist Mono', monospace">averigua</text>
+      <circle cx="1084" cy="284" r="6" fill="#a43b36"/>
+      <text x="1100" y="288" fill="#70706b" font-size="9" font-family="'Geist Mono', monospace">no pasa</text>
+
+      <!-- ================= WHO DOES WHAT — top band ================= -->
+      <text x="56" y="128" fill="#70706b" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">QUIÉN TRABAJA</text>
+      <line x1="56" y1="136" x2="1184" y2="136" stroke="rgba(13,13,13,0.10)" stroke-width="0.8"/>
+      <text x="136" y="160" fill="#70706b" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">IA sola</text>
+      <text x="336" y="160" fill="#70706b" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">candidato + IA</text>
+      <text x="536" y="160" fill="#70706b" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">candidato + IA</text>
+      <text x="736" y="160" fill="#70706b" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">persona presente</text>
+      <text x="936" y="160" fill="#70706b" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">jefe del área</text>
+
+      <!-- ================= DISCARD BAR ================= -->
+      <rect x="232" y="384" width="408" height="48" rx="6" fill="#f5f5f3"/>
+      <rect x="232" y="384" width="408" height="48" rx="6" fill="rgba(13,13,13,0.03)" stroke="rgba(13,13,13,0.30)" stroke-width="1" stroke-dasharray="4,3"/>
+      <text x="436" y="404" fill="#0d0d0d" font-size="11" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Aquí se descarta</text>
+      <text x="436" y="422" fill="#70706b" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">la IA sola si está claro · una persona si está en el límite</text>
+
+      <!-- ================= AMBAR LOOP ================= -->
+      <!-- decision -> extra test : down, left, arrowhead lands on the box right edge -->
+      <path d="M 1120 296 L 1120 488 Q 1120 496 1112 496 L 788 496" fill="none" stroke="#9b6a22" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+      <rect x="880" y="474" width="176" height="14" rx="2" fill="#f5f5f3"/>
+      <text x="968" y="484" fill="#9b6a22" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">ÁMBAR · MÁXIMO 2 VECES</text>
+      <!-- extra test -> back into decision : up the left, then right along the top -->
+      <path d="M 696 464 L 696 448 Q 696 440 704 440 L 1168 440 Q 1176 440 1176 432 L 1176 304" fill="none" stroke="#9b6a22" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+      <rect x="856" y="418" width="128" height="14" rx="2" fill="#f5f5f3"/>
+      <text x="920" y="428" fill="#9b6a22" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">SE VUELVE A DECIDIR</text>
+
+      <rect x="612" y="472" width="176" height="48" rx="6" fill="#f5f5f3"/>
+      <rect x="612" y="472" width="176" height="48" rx="6" fill="rgba(155,106,34,0.06)" stroke="rgba(155,106,34,0.50)" stroke-width="1"/>
+      <text x="700" y="492" fill="#0d0d0d" font-size="11" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Prueba adicional</text>
+      <text x="700" y="510" fill="#70706b" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">solo para esa duda</text>
+
+      <!-- ================= LEGEND ================= -->
+      <line x1="56" y1="560" x2="1184" y2="560" stroke="rgba(13,13,13,0.10)" stroke-width="0.8"/>
+      <text x="56" y="580" fill="#70706b" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">CÓMO LEERLO</text>
+
+      <rect x="56" y="600" width="20" height="12" rx="3" fill="rgba(164,59,54,0.08)" stroke="#a43b36" stroke-width="1"/>
+      <text x="84" y="610" fill="#70706b" font-size="9" font-family="'Geist Mono', monospace">etapa que más pesa</text>
+
+      <line x1="264" y1="606" x2="292" y2="606" stroke="#70706b" stroke-width="1" stroke-dasharray="4,3"/>
+      <text x="300" y="610" fill="#70706b" font-size="9" font-family="'Geist Mono', monospace">salida del proceso</text>
+
+      <text x="472" y="610" fill="#0d0d0d" font-size="12" font-weight="600" font-family="'Geist', sans-serif">30%</text>
+      <text x="508" y="610" fill="#70706b" font-size="9" font-family="'Geist Mono', monospace">cuánto pesa en la nota final</text>
+
+      <text x="740" y="610" fill="#70706b" font-size="9" font-family="'Geist Mono', monospace">Los pesos mostrados son los del nivel Dirección</text>
+    </svg>
+  </div>
+</body>
+</html>

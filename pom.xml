@@ -30,11 +30,48 @@
 		<java.version>25</java.version>
 		<spring-ai.version>2.0.0</spring-ai.version>
 		<org.mapstruct.version>1.6.3</org.mapstruct.version>
+		<!-- springdoc 3.x es la linea para Spring Boot 4. La 2.x es de Boot 3 y no arranca aqui -->
+		<springdoc.version>3.1.0</springdoc.version>
 	</properties>
 	<dependencies>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-jpa</artifactId>
+		</dependency>
+
+		<!-- Migraciones: el esquema vive en archivos versionados, nadie toca tablas a mano.
+		     Desde Flyway 10 el soporte de PostgreSQL va en su propio artefacto. -->
+		<dependency>
+			<groupId>org.flywaydb</groupId>
+			<artifactId>flyway-core</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.flywaydb</groupId>
+			<artifactId>flyway-database-postgresql</artifactId>
+		</dependency>
+
+		<!-- Identidad y permisos: Spring Boot es el dueno, no se delega en la base -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-security</artifactId>
+		</dependency>
+		<!-- Emite y valida los tokens JWT. Evita depender de una libreria externa -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+		</dependency>
+
+		<!-- Validacion de lo que llega por la API -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-validation</artifactId>
+		</dependency>
+
+		<!-- Documentacion de la API: el contrato con el frontend Next.js -->
+		<dependency>
+			<groupId>org.springdoc</groupId>
+			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+			<version>${springdoc.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.mapstruct</groupId>
@@ -97,10 +134,6 @@
 
 	<build>
 		<plugins>
-			<plugin>
-				<groupId>org.springframework.boot</groupId>
-				<artifactId>spring-boot-maven-plugin</artifactId>
-			</plugin>
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
