@@ -18,6 +18,12 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SupabaseDataServiceImpl implements SupabaseDataService {
 
+    // Ninguna consulta puede crecer sin techo: lo que sale de aquí termina dentro del prompt,
+    // y un prompt sin límite desborda la ventana de contexto del modelo.
+    private static final int DETAIL_LIMIT = 15;
+    private static final int AVISOS_LIMIT = 8;
+    private static final int AGGREGATE_LIMIT = 1000;
+
     private final RestClient supabaseRestClient;
 
     @Override
@@ -32,25 +38,33 @@ public class SupabaseDataServiceImpl implements SupabaseDataService {
     @Override
     public List<CobroRecord> getCobrosByCliente(String cliente) {
         CobroRecord[] cobros = supabaseRestClient.get()
-                .uri("/cobros?select=*&cliente=eq.{cliente}&order=vence.asc", cliente)
+                .uri("/cobros?select=*&cliente=eq.{cliente}&order=vence.asc&limit={limit}",
+                        cliente, DETAIL_LIMIT)
                 .retrieve()
                 .body(CobroRecord[].class);
         return cobros == null ? List.of() : List.of(cobros);
     }
 
+    // prioridad_tipo está definido como ('alta','media','baja'): asc devuelve las altas
+    // primero. Sin este order, el limit recortaba 15 filas arbitrarias de 700 — el agente
+    // opinaba sobre una muestra al azar, no sobre lo más urgente.
     @Override
     public List<ActividadRecord> getActividadesBloqueadas() {
         ActividadRecord[] actividades = supabaseRestClient.get()
-                .uri("/actividades?select=titulo,estado,prioridad,bloqueo,avance,limite&bloqueo=not.is.null&limit=15")
+                .uri("/actividades?select=titulo,estado,prioridad,bloqueo,avance,limite"
+                        + "&bloqueo=not.is.null&order=prioridad.asc,created_at.asc&limit={limit}", DETAIL_LIMIT)
                 .retrieve()
                 .body(ActividadRecord[].class);
         return actividades == null ? List.of() : List.of(actividades);
     }
 
+    // Growth agrega por etapa aguas arriba, así que el tope aquí sólo protege la memoria del
+    // proceso. Si el embudo supera AGGREGATE_LIMIT el agregado deja de ser exacto: a esa
+    // escala corresponde una vista SQL (v_embudo) que agregue en Postgres, no en Java.
     @Override
     public List<ProspectoRecord> getProspectos() {
         ProspectoRecord[] prospectos = supabaseRestClient.get()
-                .uri("/crm_prospectos?select=*&order=created_at.desc")
+                .uri("/crm_prospectos?select=*&order=created_at.desc&limit={limit}", AGGREGATE_LIMIT)
                 .retrieve()
                 .body(ProspectoRecord[].class);
         return prospectos == null ? List.of() : List.of(prospectos);
@@ -68,16 +82,19 @@ public class SupabaseDataServiceImpl implements SupabaseDataService {
     @Override
     public List<EntregableRecord> getEntregablesPendientes() {
         EntregableRecord[] entregables = supabaseRestClient.get()
-                .uri("/entregables?select=nombre,tipo,estado,version,created_at&estado=eq.pendiente_revision&order=created_at.asc&limit=15")
+                .uri("/entregables?select=nombre,tipo,estado,version,created_at"
+                        + "&estado=eq.pendiente_revision&order=created_at.asc&limit={limit}", DETAIL_LIMIT)
                 .retrieve()
                 .body(EntregableRecord[].class);
         return entregables == null ? List.of() : List.of(entregables);
     }
 
+    // semaforo está definido como ('ok','warn','crit'): desc devuelve los críticos primero.
     @Override
     public List<AvisoRecord> getAvisosActivos() {
         AvisoRecord[] avisos = supabaseRestClient.get()
-                .uri("/avisos?select=titulo,detalle,sev,area,responsable,leida&leida=eq.false&sev=neq.ok&order=created_at.desc&limit=8")
+                .uri("/avisos?select=titulo,detalle,sev,area,responsable,leida"
+                        + "&leida=eq.false&sev=neq.ok&order=sev.desc,created_at.desc&limit={limit}", AVISOS_LIMIT)
                 .retrieve()
                 .body(AvisoRecord[].class);
         return avisos == null ? List.of() : List.of(avisos);

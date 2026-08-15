@@ -1,4 +1,4 @@
-package com.renaser.ai.ai_engine.service.Impl;
+package com.renaser.ai.ai_engine.service.impl;
 
 import com.renaser.ai.ai_engine.dto.AgentRunRequest;
 import com.renaser.ai.ai_engine.dto.AgentRunResponse;

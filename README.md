@@ -64,6 +64,26 @@ La API queda en `http://localhost:8080`. Documentación interactiva (Swagger):
 http://localhost:8080/swagger-ui/index.html
 ```
 
+## Flujos multi-agente (paso a paso)
+
+Un flujo arranca con un agente y se va encadenando solo: cada agente devuelve `routing[]` y eso
+dispara a los siguientes (fan-out en paralelo vía RabbitMQ, con tope de profundidad y de número
+total de corridas para que la cadena no se vaya de las manos).
+
+```bash
+# Arranca el flujo, responde de inmediato con el flowId
+POST /api/v1/flows/execute
+{"agentType":"ORCHESTRATOR","entityId":"caso-1","objective":"..."}
+→ 202 {"flowId":"..."}
+
+# Traza paso a paso — se puede consultar mientras avanza
+GET /api/v1/flows/{flowId}
+```
+
+La traza devuelve, por cada paso: qué agente actuó, **quién lo disparó** (`parentRunId`), su
+profundidad en el árbol, cuánto tardó, su `severity`, los hechos que citó, los datos que declaró
+faltantes, y a quién enrutó. El `status` global es `EN_CURSO` hasta que terminan todos.
+
 ## Datos reales por agente
 
 Algunos agentes leen datos reales desde Supabase (ver `AgentExecutionServiceImpl.buildUserMessage`). Los agentes company-wide (CONSULTING, OPERATIONS, GROWTH, AUDITOR, NARRATIVE_MESSAGE) ignoran `entityId`; COLLECTIONS y EVENT lo usan como filtro (nombre exacto de cliente/evento en la tabla correspondiente). CEO, CLIENT_SUCCESS, QA_GOVERNANCE y DIAGNOSTIC todavía no tienen tabla con datos reales que consultar. FINANCE y TALENT_INTELLIGENCE quedan fuera a propósito: esas partes de la app (pagos, postulaciones) siguen en desarrollo.

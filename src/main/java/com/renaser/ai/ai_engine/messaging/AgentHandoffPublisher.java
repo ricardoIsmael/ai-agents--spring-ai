@@ -22,7 +22,7 @@ public class AgentHandoffPublisher {
     // Publica un handoff por cada entrada de routing[] (fan-out real), respetando
     // AgentChainLimits. Corta toda la rama si el siguiente salto excede max_depth;
     // corta destinos individuales si exceden max_agent_runs.
-    public void publishFanOut(UUID runId, String entityId, String objective,
+    public void publishFanOut(UUID runId, UUID flowId, String entityId, String objective,
                                List<RoutingItem> routing, int depth, int totalRuns) {
         if (routing == null || routing.isEmpty()) {
             return;
@@ -54,15 +54,16 @@ public class AgentHandoffPublisher {
             }
 
             runsSoFar++;
-            publish(new AgentHandoffMessage(runId, entityId, objective, target, nextDepth, runsSoFar));
+            publish(new AgentHandoffMessage(runId, flowId, entityId, objective, target, nextDepth, runsSoFar));
         }
     }
 
     private void publish(AgentHandoffMessage message) {
         String routingKey = "agent.handoff." + message.nextAgent().name().toLowerCase();
 
-        log.info("Publicando handoff: run={}, entidad={}, siguiente agente={}, depth={}, totalRuns={}",
-                message.runId(), message.entityId(), message.nextAgent(), message.depth(), message.totalRuns());
+        log.info("Publicando handoff: run={}, flow={}, entidad={}, siguiente agente={}, depth={}, totalRuns={}",
+                message.sourceRunId(), message.flowId(), message.entityId(),
+                message.nextAgent(), message.depth(), message.totalRuns());
 
         rabbitTemplate.convertAndSend(RabbitMQConfig.AGENT_EXCHANGE, routingKey, message);
     }
