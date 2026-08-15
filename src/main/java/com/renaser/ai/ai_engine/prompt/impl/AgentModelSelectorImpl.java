@@ -10,16 +10,17 @@ import java.util.Map;
 @Component
 public class AgentModelSelectorImpl implements AgentModelSelector {
 
-    // qwen3:0.6b probado y descartado para dos agentes: Orchestrator (routing con juicio
-    // real, no clasificación trivial) y Narrative Message (su contexto real de avisos supera
-    // la ventana de contexto de 4096 tokens del modelo, produce JSON truncado y cuelga
-    // reintentando). Ambos usan el modelo por defecto hasta encontrar un modelo liviano que
-    // sostenga JSON estructurado con contexto real inyectado.
+    // Punto de extensión para abaratar agentes: deepseek-v4-flash cuesta ~3x menos que
+    // deepseek-v4-pro por token. Se puebla recién con datos de la tasa de parseo del
+    // envelope al primer intento por agente, no por intuición — el precedente es qwen3:0.6b,
+    // que parecía razonable y descarrilaba en Orchestrator (routing con juicio real) y en
+    // Narrative Message (contexto de avisos por encima de su ventana, JSON truncado y
+    // cuelgues reintentando).
     private static final Map<AgentType, String> LIGHT_MODEL_OVERRIDES = Map.of();
 
     private final String defaultModel;
 
-    public AgentModelSelectorImpl(@Value("${spring.ai.ollama.chat.options.model}") String defaultModel) {
+    public AgentModelSelectorImpl(@Value("${renaser.ai.chat.default-model}") String defaultModel) {
         this.defaultModel = defaultModel;
     }
 

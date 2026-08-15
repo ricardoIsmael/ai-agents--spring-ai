@@ -45,6 +45,14 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-webmvc</artifactId>
 		</dependency>
+		<!-- Chat: DeepSeek V4 Pro (hosted). Reemplaza a Ollama como proveedor de chat. -->
+		<dependency>
+			<groupId>org.springframework.ai</groupId>
+			<artifactId>spring-ai-starter-model-deepseek</artifactId>
+		</dependency>
+		<!-- Ollama se conserva SOLO por los embeddings: DeepSeek no expone endpoint de
+		     embeddings, y qwen3-embedding:0.6b en CPU no es el cuello de botella que
+		     motivó la migración. El ruteo chat/embedding se define en application.yaml. -->
 		<dependency>
 			<groupId>org.springframework.ai</groupId>
 			<artifactId>spring-ai-starter-model-ollama</artifactId>
