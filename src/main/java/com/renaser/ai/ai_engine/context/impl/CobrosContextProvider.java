@@ -3,8 +3,8 @@ package com.renaser.ai.ai_engine.context.impl;
 import com.renaser.ai.ai_engine.context.AgentContextProvider;
 import com.renaser.ai.ai_engine.dto.AgentRunRequest;
 import com.renaser.ai.ai_engine.model.AgentType;
+import com.renaser.ai.ai_engine.supabase.CobroDataProvider;
 import com.renaser.ai.ai_engine.supabase.CobroRecord;
-import com.renaser.ai.ai_engine.supabase.SupabaseDataService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class CobrosContextProvider implements AgentContextProvider {
 
-    private final SupabaseDataService supabaseDataService;
+    private final CobroDataProvider cobroDataProvider;
 
     @Override
     public AgentType agentType() {
@@ -29,7 +29,7 @@ public class CobrosContextProvider implements AgentContextProvider {
     // El entityId del request identifica al cliente (columna "cliente" de la tabla cobros).
     @Override
     public String buildContext(AgentRunRequest request) {
-        return supabaseDataService.getCobrosByCliente(request.entityId()).stream()
+        return cobroDataProvider.getCobrosByCliente(request.entityId()).stream()
                 .map(this::describe)
                 .collect(Collectors.joining("\n"));
     }
