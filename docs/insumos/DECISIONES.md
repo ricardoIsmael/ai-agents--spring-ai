@@ -1,5 +1,11 @@
 # Decisiones tomadas
 
+> ⚠️ **Desactualizado desde el 15/08/2026.** El cliente mandó requisitos nuevos que cambian
+> los pesos, el filtro del currículum, la reutilización de evaluaciones, los roles y varias
+> cosas más. Lo vigente está en
+> [Qué cambia con el documento nuevo](CAMBIOS-DEL-DOCUMENTO-NUEVO.md) y en los documentos
+> numerados en versión 2.0. Este archivo se conserva como registro de lo que se decidió antes.
+
 Actualizado: 2026-08-13
 Fuente: entrevista con el usuario (Luis Rodrigo), documentos de Renaser y audio del cliente 08/08.
 

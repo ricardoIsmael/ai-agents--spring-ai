@@ -25,22 +25,59 @@ el sistema (reclutamiento y agentes de IA juntos).
 | Otros | MapStruct, Lombok, hilos virtuales |
 
 Todo corre en servidores de Renaser: los datos de candidatos no salen a terceros.
-**Falta Flyway en el `pom.xml`** y hace falta, porque el esquema se maneja con migraciones.
+Flyway, Security, JWT, Validation y Swagger ya estan en el `pom.xml` y compilan.
+
+## RENASER OS
+Es un proyecto avanzado y este backend es un modulo suyo. Son **dos servicios separados que
+hablan por HTTP**: no comparten base de datos, asi que no hay claves foraneas contra sus tablas.
+
+| Que | Como |
+|---|---|
+| Identidad del equipo de Renaser | RENASER OS emite el token; aqui solo se valida. No guardamos su contrasena |
+| Identidad de los candidatos | Cuenta propia en esta base. No son usuarios de RENASER OS |
+| Permisos del modulo | Nuestros. Su sistema no conoce acciones como «publicar una version del banco» |
+| Archivos y entregables | Almacen propio, con enlaces firmados de corta duracion |
+| Tareas, tiempos, bloqueos, retrabajo | Se leen de su API. Alimentan las metricas de la validacion |
+| Objetivos y resultados del personal | Se leen de su API. Es la fuente del seguimiento 30/90/180 |
+
+## Donde estamos (15/08/2026)
+**Documentacion cerrada, codigo sin empezar.**
+
+| | |
+|---|---|
+| Documentacion | Los diez documentos de `docs/` estan al dia y verificados entre si |
+| Base de datos | **Vacia. No hay ni una migracion de Flyway escrita todavia** |
+| Codigo | El esqueleto de Spring Boot compila; no hay ninguna entidad ni endpoint del dominio |
+| Mockups | Los mantiene otra persona y **describen la version anterior** |
+
+Lo siguiente es el **hito 1 del [documento 08](docs/08-ALCANCE-DEL-MVP.md)**: 27 tablas, sin nada
+de IA. Antes de escribir la primera migracion, leer ese documento entero — sobre todo «Lo que se
+deja preparado para no reescribir despues», que dice que cosas del sistema completo tienen que
+existir desde el primer dia aunque el hito 1 no las use.
 
 ## Documentos del proyecto
 Todo vive en `docs/`. Empezar por [docs/README.md](docs/README.md).
 
-- [Requisitos funcionales](docs/01-REQUISITOS-FUNCIONALES.md) — RF-01 a RF-100. Objetivo, alcance,
-  que hace el sistema y donde interviene una persona. **Es el documento principal: se lee solo.**
+- [Que hace el sistema](docs/00-QUE-HACE-EL-SISTEMA.md) — el sistema entero **sin una sola palabra
+  tecnica**, en cinco minutos. **Empezar por aqui.** Si algo de los demas documentos no se puede
+  amarrar a una frase de este, sobra.
+- [Requisitos funcionales](docs/01-REQUISITOS-FUNCIONALES.md) — RF-01 a RF-154. Objetivo, alcance,
+  que hace el sistema y donde interviene una persona. Desarrolla cada frase del 00. Se lee solo.
 - [Requisitos no funcionales](docs/02-REQUISITOS-NO-FUNCIONALES.md) — RNF-01 a RNF-66.
-- [Estados de la postulacion](docs/03-ESTADOS-POSTULACION.md) — los estados y sus transiciones.
-  Base del backend: ningun estado fuera de esa lista puede existir.
-- [Roles y permisos](docs/04-ROLES-Y-PERMISOS.md) — quien puede hacer que, accion por accion.
+- [Estados de la postulacion](docs/03-ESTADOS-POSTULACION.md) — los **18** estados y sus
+  transiciones. Base del backend: ningun estado fuera de esa lista puede existir. Tienen forma
+  de rejilla (cinco etapas por cuatro momentos), asi que el siguiente estado se calcula.
+  **Ojo: la maquina de estados es propuesta nuestra, no viene de Renaser.**
+- [Roles y permisos](docs/04-ROLES-Y-PERMISOS.md) — los **73** permisos, accion por accion.
   Un rol es un conjunto de permisos guardado en base de datos, no algo fijo en codigo.
-- [Modelo de datos](docs/05-MODELO-DE-DATOS.md) — las 71 tablas por area, que impide la base
+- [Modelo de datos](docs/05-MODELO-DE-DATOS.md) — las **93** tablas por area, que impide la base
   y que tiene que vivir en el codigo. Se lee para entender el modelo.
 - [Diccionario de datos](docs/07-DICCIONARIO-DE-DATOS.md) — cada tabla con todas sus columnas,
   tipos y claves. Se consulta. **Es la base de las migraciones de Flyway.**
+- [Alcance del MVP](docs/08-ALCANCE-DEL-MVP.md) — **el cliente quiere un MVP, no el sistema
+  completo.** Tres hitos: 27 tablas, 59 y 70, cada uno usable solo. Dice tambien que se deja
+  puesto desde el hito 1 para no reescribir despues. **Leerlo antes de escribir cualquier
+  migracion.**
 - `docs/diagramas/` — HTML autocontenidos, se abren en el navegador.
 - `docs/mockups/` — prototipos de pantalla. **Los mantiene otra persona, no editarlos.**
 - `docs/insumos/` — documentos originales del cliente y notas de analisis.
@@ -69,16 +106,48 @@ por detras de una caja ni texto desbordado.
 `docs/insumos/` guarda transcripciones, documentos del cliente y notas de analisis.
 
 Documentos clave (leer antes de trabajar):
-- [Que documento manda](docs/insumos/ANALISIS-DOCUMENTOS.md) — orden de precedencia entre los
-  tres documentos de Renaser y que aporta cada uno.
+- [Que cambia con el documento nuevo](docs/insumos/CAMBIOS-DEL-DOCUMENTO-NUEVO.md) — que trajo
+  el documento del 14/08, que contradice y **que se decidio en cada punto**.
+- [Que documento manda](docs/insumos/ANALISIS-DOCUMENTOS.md) — orden de precedencia y estado de
+  cada documento del repositorio.
 - [Decisiones tomadas](docs/insumos/DECISIONES.md) — arquitectura, embudo, roles y reglas ya cerradas.
+  ⚠️ Todavia describe la version anterior en varios puntos.
+- [La comprobacion](docs/insumos/COMPROBACION-SIN-TECNICA.md) — el rastreo de las 93 tablas
+  contra el documento 00, y de donde salen los conteos de cada hito.
 - [Notas temporales](docs/insumos/NOTAS-TEMPORALES.md) — lo que sigue pendiente.
+- `docs/insumos/pruebas-tecnicas/` — **las cinco pruebas del puesto reales**, en PDF, tal como se
+  enviaron a candidatos. **Son anteriores**: modelo de contenido y de tono, no de formato.
 - [Entrevista con el cliente 08/08](docs/insumos/entrevista-cliente-2026-08-08.md) — transcripcion.
 
-Regla de precedencia: manda **Sistema_Completo_Talento_RENASER_Seleccion_2026_2029**.
-`Banco_Maestro_Preguntas` sigue vigente solo para las preguntas.
-`Sistema_RENASER_Talent_Intelligence` esta descartado salvo gobernanza, Bar Raiser y mapa
-de riesgos: sus baterias reutilizan los mismos IDs (D01-D90 etc.) para preguntas distintas.
+Regla de precedencia: manda **nuevo_doc_requisitos_funcionales.docx** (RENASER Talent
+Intelligence V1.1 FINAL), que se declara definitivo y reemplaza a los anteriores.
+`Sistema_Completo_Talento_RENASER_Seleccion_2026_2029` conserva valor para el texto completo de
+bancos, pruebas y ejemplos que el vigente no reproduce, si no lo contradice.
+`Banco_Maestro_Preguntas` sigue vigente solo para las preguntas y sus claves.
+`Sistema_RENASER_Talent_Intelligence` es la version anterior del vigente y esta descartada: sus
+baterias reutilizan los mismos IDs (D01-D90 etc.) para preguntas distintas.
+
+## Lo que Renaser hace hoy, y lo que nunca ha hecho
+El proceso **ya existe y lo llevan a mano**: no se esta inventando un metodo, se esta
+digitalizando uno que usan. Eso vale para casi todo el recorrido, con **tres excepciones en la
+prueba del puesto** que hay que tener presentes porque el modelo las soporta y la realidad no las
+usa todavia:
+
+| Lo que pide el documento del cliente | Lo que Renaser hace hoy | Estado |
+|---|---|---|
+| Prueba cronometrada, con reloj en el servidor | Encargo de varios dias, sin reloj | **Se hara.** Es la mejora que quieren |
+| Un cambio inesperado a mitad de la prueba | No existe | **Se hara** |
+| Rubrica publicada que sume 100 puntos | Una lista de 10 a 12 criterios **sin numeros** | **Pendiente de Renaser.** Frena el paso 0 |
+
+Las cinco pruebas reales estan en `docs/insumos/pruebas-tecnicas/` (ARQ, BIO, CIVIL, CX, SIS: el
+prefijo es la familia de trabajo). Son **anteriores**: valen como modelo de contenido y de tono,
+no de formato. De mirarlas salio que los entregables sean una tabla y no un texto —cada prueba
+pide de uno a cuatro, cada uno con su regla— y que `version_plantilla_prueba` tenga `modalidad`,
+que existe solo para poder cargarlas y adaptarlas.
+
+⚠️ **Una prueba cronometrada dura 60-120 minutos y lo que piden esas cinco no cabe ahi.** Un
+producto funcional mas un video no se hace en dos horas. Ponerles reloj obliga a **encoger el
+encargo**, y eso lo tiene que reescribir Renaser: sin eso el hito 3 no tiene contenido.
 
 ## Sistema susceptible a cambios
 El cliente realiza cambios recurrentemente, ya sea en métricas, en datos, en permisos de roles, diseñar el sistema para que admita todo tipo de cambios inesperados, y que todo sea personalizable para el rol de dirección o admin. Que pueda ver y editar todo. 

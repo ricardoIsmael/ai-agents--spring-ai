@@ -115,19 +115,23 @@ claves; seguimiento 30/90/180; y la prohibición de detectores de uso de IA.
 - Valores concretos de familias afines, vigencia de componentes, blueprints, barreras y
   límites de repregunta.
 
-### Impacto documental pendiente de reconciliación sincronizada
+### Impacto documental · estado al 15/08
 
-La incorporación completa exige actualizar juntos:
+Las decisiones que resuelven cada contradicción están en
+[Qué cambia con el documento nuevo](CAMBIOS-DEL-DOCUMENTO-NUEVO.md). Ese documento es el
+registro de lo decidido; este es el de qué manda sobre qué.
 
-- `01-REQUISITOS-FUNCIONALES.md` y `README.md`;
-- `02-REQUISITOS-NO-FUNCIONALES.md`, por multiempresa, consentimiento y proveedor de IA;
-- `03-ESTADOS-POSTULACION.md`, por cierre de vacante, plazos, Radar y validación opcional;
-- `04-ROLES-Y-PERMISOS.md`, por reutilización de RENASER OS y el rol Administrador;
-- `05-MODELO-DE-DATOS.md`, `07-DICCIONARIO-DE-DATOS.md` y el diagrama, porque las 71 tablas
-  actuales no cubren Solicitud de Talento, organización, Radar, blueprint y varias
-  procedencias/versiones nuevas;
-- ambos mockups y su inventario, por pesos, pasos, textos, filtros, consentimiento, sesiones
-  y métricas.
+| Documento | Estado |
+|---|---|
+| `01-REQUISITOS-FUNCIONALES.md` | ✅ Reescrito · versión 2.0 |
+| `02-REQUISITOS-NO-FUNCIONALES.md` | ✅ Corregido · versión 2.0 |
+| `03-ESTADOS-POSTULACION.md` | ✅ Reescrito · versión 2.0, de 25 estados a 18 |
+| `04-ROLES-Y-PERMISOS.md` | ✅ Reescrito · versión 2.0, cinco roles y 73 permisos |
+| `05-MODELO-DE-DATOS.md` | ⏳ Pendiente |
+| `07-DICCIONARIO-DE-DATOS.md` | ⏳ Pendiente |
+| `README.md` | ⏳ Pendiente |
+| `docs/diagramas/` | ⏳ Pendiente |
+| Mockups y su inventario | ⏳ Pendiente · **los mantiene otra persona** |
 
 No se debe «sumar» estas reglas a las anteriores: en los temas de la tabla son un reemplazo.
 
@@ -305,3 +309,19 @@ es un valor inicial, no una obligación universal. **La figura productiva sigue 
 4. Familias afines, vigencia de componentes, blueprints y límites de repregunta iniciales.
 5. Poder definitivo del Evaluador de Estándar por organización; V1 interna puede iniciar con
    recomendación registrada.
+6. Si al facilitador de la simulación le sirve que el sistema conozca cómo se reparten los
+   minutos de la sesión, o la lleva él por su cuenta (ver «Hasta dónde vale esta comprobación»
+   en [COMPROBACION-SIN-TECNICA.md](COMPROBACION-SIN-TECNICA.md)).
+
+---
+
+## Comprobación del 15/08 · ¿sobra algo en el modelo?
+
+Se escribió el sistema entero en dos páginas sin una sola palabra técnica y se rastrearon las 93
+tablas contra ese texto. **87 se amarran a algo que Renaser pidió por escrito**, 3 a una idea
+nuestra y 3 al Radar de Talento, que ya estaba aplazado. No hay grasa que quitar: rehacer la parte
+técnica de cero no simplificaría el sistema.
+
+Lo que sí salió es por dónde conviene empezar: recibir postulaciones necesita 33 tablas, y
+añadirle el Perfil Integral calificado sube a 67. El detalle está en
+[COMPROBACION-SIN-TECNICA.md](COMPROBACION-SIN-TECNICA.md).

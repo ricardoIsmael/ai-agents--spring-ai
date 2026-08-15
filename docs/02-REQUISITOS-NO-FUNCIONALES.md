@@ -1,7 +1,7 @@
 # Requisitos no funcionales
 
 Sistema de selección de personal — Renaser Consulting
-Versión 1.1 · 2026-08-14
+Versión 2.0 · 2026-08-15
 
 Este documento dice **cómo** debe funcionar el sistema: con qué se construye, qué tan rápido,
 qué tan seguro y qué pasa cuando algo falla.
@@ -14,7 +14,10 @@ El **qué hace** está en [Requisitos funcionales](01-REQUISITOS-FUNCIONALES.md)
 
 Un portal público donde la gente postula, y un panel dentro de RENASER OS donde el equipo de
 Renaser trabaja. Entre los dos, cinco etapas de evaluación que van de leer un currículum a
-verla trabajar siete días.
+verla sostener un periodo de trabajo real.
+
+Este backend **es un módulo de RENASER OS**, no un sistema aparte. El frontend ya existe y lo
+llama por su API. Son dos servicios separados: **no comparten base de datos**.
 
 ```
    CANDIDATO                      EQUIPO RENASER
@@ -26,13 +29,15 @@ verla trabajar siete días.
                          |
                    API REST / JSON
                          |
-                   Spring Boot
-                         |
+                   Spring Boot  <----> API de RENASER OS
+                         |             identidad del equipo
+                         |             tareas y tiempos
+                         |             desempeño 30/90/180
         +----------------+----------------+
         |                |                |
    PostgreSQL         RabbitMQ      Almacén de
    (propio)           (la cola)      archivos
-                         |
+                         |             (propio)
                     Ollama (califica)
 ```
 
@@ -91,10 +96,23 @@ Para desarrollar se levanta en un contenedor; en producción, en el servidor de 
 
 Cinco reglas que evitan problemas conocidos:
 
-**RNF-06** **Spring Boot es el dueño de la identidad.** Los usuarios, las contraseñas y los
-permisos son tablas suyas. No se delega la seguridad en la base de datos ni en ninguna capa
-intermedia.
-*Por qué:* tener permisos en dos capas distintas hace que ninguna de las dos sea confiable.
+**RNF-06** **La identidad del equipo viene de RENASER OS; los permisos de este módulo son de
+este módulo.** RENASER OS emite el token y este backend solo valida su firma: no guardamos la
+contraseña de nadie del equipo. Los candidatos sí tienen cuenta y contraseña aquí, porque no son
+usuarios de RENASER OS.
+*Por qué:* dos contraseñas para la misma persona es justo lo que RENASER OS quiere evitar. Pero
+su sistema no conoce acciones como «publicar una versión del banco», así que los permisos finos
+tienen que vivir donde existen esas acciones.
+
+**RNF-06b** El identificador que un usuario tiene en RENASER OS se guarda como **columna suelta,
+sin clave foránea**, porque son dos servicios separados.
+*Por qué:* una clave foránea contra una tabla que vive en otra base de datos no existe. Fingir
+que sí lleva a un sistema que se cae cuando el otro cambia algo.
+
+**RNF-06c** **Ningún usuario ve datos de una organización que no sea la suya.** No es un permiso
+que se pueda marcar ni desmarcar: es una condición que el backend aplica en cada consulta.
+*Por qué:* el sistema se diseñó para admitir clientes de consultoría más adelante. Un
+aislamiento que se añade después nunca cubre todas las consultas que ya se escribieron.
 
 **RNF-07** La base de datos **nunca se expone a internet**. Solo la alcanza el backend, desde
 la red interna del servidor.
@@ -121,14 +139,34 @@ artificial corre en la misma máquina.
 
 **RNF-11** El sistema cumple la **Ley 29733** de protección de datos personales del Perú.
 
-**RNF-12** El candidato acepta el tratamiento de sus datos al crear su cuenta. Se guarda
-fecha, hora, versión del texto aceptado y dirección desde donde se aceptó.
+**RNF-12** **Son dos consentimientos separados**, y el segundo nunca se da por supuesto:
+
+| Consentimiento | Para qué |
+|---|---|
+| Del proceso | Evaluar su postulación a **esta** vacante |
+| De futuros contactos | Conservar sus datos y avisarle de otras convocatorias |
+
+De cada aceptación se guarda: usuario autenticado, nombre registrado, versión del texto,
+fecha y hora, dirección desde donde se aceptó, **identificador de sesión** y **huella del
+documento**. La evidencia se puede exportar.
+
+**RNF-12b** El candidato puede retirar el consentimiento de futuros contactos **sin que eso
+afecte** a los registros que haya obligación de conservar, y sin cerrar sus postulaciones en
+curso. Son tres cosas distintas: retirar una postulación, retirar el consentimiento de futuros
+contactos, y pedir el borrado de datos.
 
 **RNF-13** El texto de consentimiento dice **tres cosas** de forma clara:
-1. Que sus datos se usan para evaluar su postulación.
-2. Que **una inteligencia artificial participa** en esa evaluación.
-3. Dónde se guardan sus datos y **cuánto tiempo**. Como todo corre en servidores de Renaser,
-   no hay que declarar envío a otro país; el plazo de conservación sigue pendiente de fijar.
+1. Que sus datos se usan para evaluar su postulación, y que participan agentes de inteligencia
+   artificial en esa evaluación.
+2. Qué se hace con sus entregables y qué confidencialidad aplica.
+3. Dónde se guardan sus datos y **cuánto tiempo**. Como todo corre en servidores de Renaser, no
+   hay que declarar envío a otro país.
+
+**RNF-13b** El **periodo de conservación es configuración**, fijada según la política aprobada.
+**No se escribe un número de meses en el código.** Al vencer, el sistema ejecuta la política
+definida: eliminar, anonimizar o pedir que renueve el consentimiento.
+*Por qué:* la ley obliga a fijar un plazo y a decirlo en el texto. Escribirlo en el código
+significa un despliegue cada vez que el abogado cambie de opinión.
 
 **RNF-14** El texto de consentimiento se versiona. Si cambia, los que ya aceptaron quedan
 ligados a la versión que firmaron.
@@ -136,8 +174,9 @@ ligados a la versión que firmaron.
 **RNF-15** El candidato puede **pedir que se borren sus datos**. El sistema debe poder
 hacerlo sin romper los registros de auditoría.
 
-**RNF-16** Antes de que la IA lea un CV, el sistema **oculta** foto, edad, sexo y estado
-civil. Esa versión oculta es la única que se envía al modelo.
+**RNF-16** Antes de que la IA lea un CV, el sistema **oculta** foto, edad, sexo, estado civil y
+cualquier otro dato marcado como no utilizable para puntuar. Esa versión oculta es la única que
+se envía al modelo. Qué se oculta es configurable, y la lista arranca con esos cuatro.
 
 **RNF-17** El sistema guarda qué versión del CV se envió a la IA, para poder demostrar que la
 regla se cumplió.
@@ -146,9 +185,16 @@ regla se cumplió.
 que no postuló. Nadie ajeno a la empresa los ve, y nadie aparece como candidato de una
 vacante sin haberse postulado a ella.
 
-Distinto es lo que pasa **dentro de sus propias postulaciones**: si ya respondió las
-preguntas de un nivel y postula a otro puesto del mismo nivel, sus respuestas se reutilizan y
-no las repite. Eso es una comodidad para él, no un uso de sus datos a sus espaldas.
+Distinto es lo que pasa **dentro de sus propias postulaciones**: parte de lo que ya respondió
+puede reutilizarse para no hacérselo repetir. Eso es una comodidad para él, no un uso de sus
+datos a sus espaldas.
+
+**RNF-18b** **Que dos puestos sean del mismo nivel no basta** para reutilizar una evaluación.
+Solo se reutilizan los componentes vigentes cuando el puesto nuevo es de la misma familia de
+trabajo o de una declarada afín. Las preguntas propias del puesto se vuelven a generar. Tanto la
+vigencia de cada componente como qué familias son afines son configurables y versionadas.
+*Por qué:* un director de tecnología y un director comercial son el mismo nivel y no se
+parecen en nada. Reutilizar por nivel evalúa a uno con las preguntas del otro.
 
 ---
 
@@ -156,14 +202,16 @@ no las repite. Eso es una comodidad para él, no un uso de sus datos a sus espal
 
 **RNF-19** Todo el tráfico va por HTTPS.
 
-**RNF-20** Las contraseñas se guardan cifradas de forma irreversible. Nunca en texto plano.
+**RNF-20** Las contraseñas de los candidatos se guardan cifradas de forma irreversible, nunca en
+texto plano. Del equipo de Renaser no se guarda ninguna: su token lo emite RENASER OS.
 
-**RNF-21** Cada llamada a la API verifica dos cosas: quién es el usuario y si tiene permiso
-para eso.
+**RNF-21** Cada llamada a la API verifica **tres** cosas: quién es el usuario, si tiene permiso
+para eso, y que los datos que pide sean de su organización.
 
-**RNF-22** Un candidato solo puede ver **sus propias** postulaciones y respuestas.
+**RNF-22** Un candidato solo puede ver **sus propias** postulaciones y respuestas. El portal
+está aislado de los datos internos y de los demás candidatos.
 
-**RNF-23** El jefe del área solo ve los candidatos de **sus** vacantes.
+**RNF-23** El responsable del área solo ve las solicitudes, vacantes y candidatos de **su** área.
 
 **RNF-24** Las claves de puntuación **nunca** se envían al portal del candidato. Ni siquiera
 escondidas en el código de la página.
@@ -192,6 +240,13 @@ momento: mismas preguntas, mismo orden, mismos pesos.
 
 **RNF-31** Se guarda la respuesta completa de la IA, no solo la nota que produjo.
 *Por qué:* si alguien reclama una calificación, hay que poder revisar en qué se basó.
+
+**RNF-31b** Cada ejecución de un agente guarda además: **qué agente fue y con qué versión**, el
+objetivo, las entradas y evidencias que recibió, el modelo y proveedor, la versión de las
+instrucciones o la rúbrica, y **el nivel de confianza** de su salida.
+*Por qué:* sin la versión del agente no se puede saber si un error viene del modelo o de un
+cambio en sus instrucciones. Y sin la confianza no se puede distinguir una nota firme de una
+que el propio modelo dio con dudas.
 
 **RNF-32** Se registra cuánto costó cada llamada a la IA, para poder controlar el gasto.
 
@@ -264,8 +319,10 @@ lo respondido se pierde.
 **RNF-50** Si el candidato cierra la página durante una prueba cronometrada, **el tiempo
 sigue corriendo**.
 
-**RNF-51** El cambio inesperado se dispara solo, al minuto configurado, aunque el candidato
-no esté mirando la pantalla.
+**RNF-51** El cambio inesperado se dispara solo, aunque el candidato no esté mirando la
+pantalla. **El minuto exacto se sortea dentro de un rango configurable** y se guarda en el
+intento, junto con qué variante del cambio le tocó.
+*Por qué:* si siempre aparece a la mitad, el segundo candidato ya lo sabe.
 
 **RNF-52** Las horas registradas durante la simulación se guardan con precisión de segundos y
 con zona horaria.
@@ -328,17 +385,32 @@ ajuste automático que nunca tendría suficiente información para funcionar.
 
 | De qué depende | Estado | Qué pasa si no está |
 |---|---|---|
-| Datos de desempeño de RENASER OS | **No existe** | El seguimiento a 30/90/180 días no se puede llenar solo |
-| Prueba psicométrica | **No comprada** | Su 30% se reparte entre las otras dos partes |
+| API de RENASER OS: identidad del equipo | **Existe** | Nadie del equipo puede entrar. Es la única dependencia dura |
+| API de RENASER OS: tareas, tiempos y bloqueos | **Existe** | Las métricas de la validación se completan a mano |
+| API de RENASER OS: desempeño 30/90/180 | **Existe** | El seguimiento posterior queda vacío |
+| Módulo psicométrico propio | **No construido** | Su 5% se reparte entre las otras dos partes |
 | Servidor que aguante el modelo local | **Sin confirmar** | Sin máquina suficiente, calificar tarda de más |
 | Dominio de correo de Renaser | **Sin confirmar** | Los correos pueden caer en spam |
+| Figura contractual de la validación productiva | **Sin definir** | Solo se puede usar la modalidad no productiva |
 
 **RNF-65** El correo sale desde el dominio propio de Renaser, con la configuración de
 autenticación correcta.
 *Por qué:* si una invitación a la sesión cae en spam, se pierde al candidato.
 
-**RNF-66** Cada dependencia externa se construye de forma que el sistema **siga funcionando
-sin ella**, aunque esa parte quede vacía.
+**RNF-66** Cada dependencia externa se construye de forma que el sistema **siga funcionando sin
+ella**, aunque esa parte quede vacía.
+
+**RNF-66b** Cuando la API de RENASER OS no responde, el sistema **no se cae ni inventa el dato**:
+
+| Qué se pedía | Qué hace el sistema |
+|---|---|
+| Validar el token del equipo | Rechaza la entrada. No hay forma de fingir una identidad |
+| Tareas, tiempos y bloqueos | Deja la métrica vacía y marcada como pendiente, para que una persona la complete |
+| Desempeño posterior | Reintenta más tarde. Nada del proceso de selección depende de ella |
+
+*Por qué:* el portal del candidato no debe caerse porque el sistema interno esté en
+mantenimiento. Un candidato rindiendo una prueba cronometrada no puede perder su intento por
+algo que no tiene nada que ver con él.
 
 ---
 
@@ -346,8 +418,11 @@ sin ella**, aunque esa parte quede vacía.
 
 | Documento | Qué contiene |
 |---|---|
+| [Qué hace el sistema](00-QUE-HACE-EL-SISTEMA.md) | El sistema entero, sin nada técnico. **Empieza por aquí** |
 | [Requisitos funcionales](01-REQUISITOS-FUNCIONALES.md) | Qué hace el sistema, etapa por etapa |
-| [Estados de la postulación](03-ESTADOS-POSTULACION.md) | Los 24 estados y cómo se pasa de uno a otro |
+| [Estados de la postulación](03-ESTADOS-POSTULACION.md) | Los 18 estados y cómo se pasa de uno a otro |
 | [Roles y permisos](04-ROLES-Y-PERMISOS.md) | Quién puede hacer qué, acción por acción |
-| [Embudo de selección](diagramas/embudo-seleccion.html) | Las cinco etapas, en un dibujo |
-| [Estados, en un dibujo](diagramas/estados-postulacion.html) | El ciclo que se repite en cada etapa |
+| [Modelo de datos](05-MODELO-DE-DATOS.md) | Las tablas por área y por qué existe cada una |
+| [Etapas y pesos](diagramas/embudo-seleccion.html) | Los cien puntos, en un dibujo |
+| [Estados, en un dibujo](diagramas/estados-postulacion.html) | La rejilla de etapas por momentos |
+| [Alcance del MVP](08-ALCANCE-DEL-MVP.md) | Qué se construye primero, en qué orden y por qué |

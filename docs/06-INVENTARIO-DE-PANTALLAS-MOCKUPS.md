@@ -1,5 +1,15 @@
 # Inventario de pantallas de los mockups
 
+> ⚠️ **Desactualizado desde el 15/08/2026.** Describe los mockups tal como están, y los mockups
+> todavía reflejan la versión anterior de los requisitos: pesos por nivel, zona dudosa, CV que
+> descarta, cuatro roles y semáforo de cuatro valores. **Los mockups los mantiene otra persona**,
+> así que este documento se actualiza cuando ellos cambien. Lo vigente está en
+> [Requisitos funcionales](01-REQUISITOS-FUNCIONALES.md).
+>
+> **Qué pantallas de estas entran en cada hito** está en
+> [Alcance del MVP](08-ALCANCE-DEL-MVP.md): 9 en el primero, 12 en el segundo, 14 en el tercero,
+> de las 21 base.
+
 **Fecha del inventario:** 14 de agosto de 2026  
 **Alcance:** estado actual de los dos prototipos HTML, no una propuesta futura ni una transcripción de los requisitos.
 

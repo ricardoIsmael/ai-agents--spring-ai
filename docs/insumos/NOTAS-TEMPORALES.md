@@ -1,5 +1,10 @@
 # Notas temporales — Proyecto Reclutamiento Renaser
 
+> ⚠️ **Revisar contra el documento nuevo.** Varios de estos pendientes ya los resolvió el
+> cliente el 14/08/2026: el currículum no descarta, el plazo de conservación es configurable y
+> la zona dudosa fue reemplazada por grupos de prioridad. Ver
+> [Qué cambia con el documento nuevo](CAMBIOS-DEL-DOCUMENTO-NUEVO.md).
+
 > **Documento de trabajo. Aquí solo vive lo que sigue sin respuesta.**
 > Lo que ya está decidido está en los documentos numerados y en `DECISIONES.md`.
 > Este archivo se vacía solo: cada vez que algo se resuelve, sale de aquí.
