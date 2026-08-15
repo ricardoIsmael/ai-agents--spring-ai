@@ -46,8 +46,13 @@ public class AgentExecutionServiceImpl implements AgentExecutionService {
     private final AgentExecutionRequestPublisher agentExecutionRequestPublisher;
     private final JsonMapper jsonMapper;
 
+    /**
+     * Sin @Transactional a propósito: askAgent() puede tardar minutos y una transacción
+     * abierta durante todo ese tiempo retiene una conexión del pool. Con el pool por defecto
+     * (10 conexiones), una decena de corridas simultáneas congelaría la aplicación entera.
+     * Cada save() es atómico por sí mismo, que es la única garantía que este flujo necesita.
+     */
     @Override
-    @Transactional
     public AgentRunResponse execute(AgentRunRequest request) {
         UUID flowId = UUID.randomUUID();
         AgentResponse<?> aiResult = askAgent(request);
@@ -97,9 +102,11 @@ public class AgentExecutionServiceImpl implements AgentExecutionService {
      * Una corrida que revienta (modelo caído, JSON irrecuperable) debe quedar marcada como
      * fallida y visible en la traza. Sin este catch quedaba pendiente para siempre, y desde
      * fuera era indistinguible de "todavía procesando".
+     *
+     * Tampoco lleva @Transactional, por el mismo motivo que execute(): la llamada al modelo
+     * nunca debe ocurrir con una transacción abierta.
      */
     @Override
-    @Transactional
     public void completeExecution(AgentExecutionMessage message) {
         AgentRun run = agentRunRepository.findById(message.runId())
                 .orElseThrow(() -> new ResourceNotFoundException("AgentRun", "id", message.runId()));
