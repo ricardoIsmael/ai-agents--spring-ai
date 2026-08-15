@@ -5,11 +5,10 @@ import com.renaser.ai.ai_engine.dto.AgentResponse;
 import com.renaser.ai.ai_engine.dto.AgentResponseTypeRegistry;
 import com.renaser.ai.ai_engine.dto.AgentRunRequest;
 import com.renaser.ai.ai_engine.model.AgentRun;
-import com.renaser.ai.ai_engine.prompt.AgentModelSelector;
 import com.renaser.ai.ai_engine.prompt.AgentPromptProvider;
+import com.renaser.ai.ai_engine.prompt.ChatOptionsFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.ollama.api.OllamaChatOptions;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
 import tools.jackson.core.JacksonException;
@@ -30,22 +29,27 @@ public class AgentInvoker {
 
     private final ChatClient chatClient;
     private final AgentPromptProvider agentPromptProvider;
-    private final AgentModelSelector agentModelSelector;
+    private final ChatOptionsFactory chatOptionsFactory;
     private final AgentResponseTypeRegistry agentResponseTypeRegistry;
     private final AgentContextResolver agentContextResolver;
     private final JsonMapper jsonMapper;
 
     public AgentResponse<?> ask(AgentRunRequest request) {
         String systemPrompt = agentPromptProvider.getSystemPrompt(request.agentType());
-        String model = agentModelSelector.selectModel(request.agentType());
         ParameterizedTypeReference<?> responseType = agentResponseTypeRegistry.resolve(request.agentType());
 
+        // Sin useProviderStructuredOutput(): DeepSeek expone JSON mode (json_object) pero no
+        // JSON Schema estricto, así que no hay structured output nativo del proveedor al que
+        // delegar. El converter de Spring AI inyecta el schema en el prompt y auto-corrige
+        // si la salida no parsea. La contracara es que el contrato deja de estar garantizado
+        // por el proveedor y pasa a depender del prompt: por eso se mide la tasa de parseo
+        // al primer intento antes de mover agentes a modelos más baratos.
         Object result = chatClient.prompt()
                 .system(systemPrompt)
                 .user(agentContextResolver.buildUserMessage(request))
-                .options(OllamaChatOptions.builder().model(model).disableThinking())
+                .options(chatOptionsFactory.forAgent(request.agentType()))
                 .call()
-                .entity(responseType, spec -> spec.useProviderStructuredOutput().validateSchema());
+                .entity(responseType);
 
         return (AgentResponse<?>) result;
     }

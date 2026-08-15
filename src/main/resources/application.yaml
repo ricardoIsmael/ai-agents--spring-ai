@@ -9,14 +9,15 @@ spring:
     virtual:
       enabled: true
 
-  # Techo duro a la llamada al modelo. Una corrida normal tarda 70-90 s en CPU; hoy hubo una
-  # patológica de 31 min que cruzó el consumer_timeout de RabbitMQ. Con esto la corrida se
-  # corta, se marca como fallida y queda visible en la traza en vez de bloquear el consumidor.
-  # Sobre GPU este valor debería bajar a ~60 s.
+  # Techo duro a la llamada al modelo. El valor anterior era 10m porque el chat corría en
+  # Ollama sobre CPU (70-90 s por corrida, con una patológica de 31 min que cruzó el
+  # consumer_timeout de RabbitMQ). Con el chat en DeepSeek esa clase de corrida desaparece,
+  # así que el techo baja a 90 s: si una llamada lo cruza es un problema real de la API, no
+  # una corrida lenta esperable, y conviene que falle rápido y quede visible en la traza.
   http:
     client:
       connect-timeout: 10s
-      read-timeout: 10m
+      read-timeout: 90s
 
   datasource:
     url: jdbc:postgresql://localhost:5433/renaser_db
@@ -36,12 +37,29 @@ spring:
     username: guest
     password: guest
   ai:
+    # Ruteo explícito de proveedores: el chat va a DeepSeek, los embeddings se quedan
+    # locales. Sin esto, con los dos starters en el classpath Spring AI no sabe cuál
+    # ChatModel inyectar.
+    model:
+      chat: deepseek
+      embedding: ollama
+
+    deepseek:
+      # Mismo patrón que supabase.service-role-key: default vacío para que el contexto
+      # levante sin secretos (tests, CI), y el valor real llega por variable de entorno o
+      # por application-secrets.yaml, que está gitignored.
+      api-key: ${DEEPSEEK_API_KEY:}
+      chat:
+        options:
+          # Default del contexto de Spring. AgentInvoker lo sobrescribe por corrida vía
+          # ChatOptionsFactory + AgentModelSelector, así que en la práctica solo aplica
+          # a llamadas que no pasen por el motor de agentes.
+          model: ${renaser.ai.chat.default-model}
+          max-tokens: ${renaser.ai.chat.max-tokens}
+
     ollama:
       base-url: http://localhost:11434
-      chat:
-        think: false
-        options:
-          model: gemma4:e4b
+      # Sin bloque `chat`: Ollama ya no sirve el chat, solo los embeddings del vector store.
       embedding:
         options:
           model: qwen3-embedding:0.6b
@@ -53,6 +71,19 @@ spring:
         initialize-schema: true
 server:
   port: 8080
+
+# Namespace propio del motor. `default-model` es la única fuente de verdad del modelo de
+# chat: la consume AgentModelSelector y la referencia spring.ai.deepseek. Es neutral a
+# propósito — cambiar de proveedor no debería obligar a tocar código que hoy leería una
+# property con el nombre del proveedor adentro.
+renaser:
+  ai:
+    chat:
+      default-model: deepseek-v4-pro
+      # Techo de salida. Un envelope truncado a mitad de camino es JSON inválido, y ese fue
+      # exactamente el modo de falla que descartó a qwen3:0.6b con su ventana de 4096.
+      # Lo consume DeepSeekChatOptionsFactory, que arma las options de cada corrida.
+      max-tokens: 4096
 
 supabase:
   url: https://ikyjurujfxpazygwloja.supabase.co
