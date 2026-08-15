@@ -3,8 +3,8 @@ package com.renaser.ai.ai_engine.context.impl;
 import com.renaser.ai.ai_engine.context.AgentContextProvider;
 import com.renaser.ai.ai_engine.dto.AgentRunRequest;
 import com.renaser.ai.ai_engine.model.AgentType;
+import com.renaser.ai.ai_engine.supabase.EventoDataProvider;
 import com.renaser.ai.ai_engine.supabase.EventoRecord;
-import com.renaser.ai.ai_engine.supabase.SupabaseDataService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class EventoContextProvider implements AgentContextProvider {
 
-    private final SupabaseDataService supabaseDataService;
+    private final EventoDataProvider eventoDataProvider;
 
     @Override
     public AgentType agentType() {
@@ -29,7 +29,7 @@ public class EventoContextProvider implements AgentContextProvider {
     // El entityId del request identifica al evento (columna "nombre" de la tabla eventos).
     @Override
     public String buildContext(AgentRunRequest request) {
-        return supabaseDataService.getEventoByNombre(request.entityId()).stream()
+        return eventoDataProvider.getEventoByNombre(request.entityId()).stream()
                 .map(this::describe)
                 .collect(Collectors.joining("\n"));
     }

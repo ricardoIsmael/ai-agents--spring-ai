@@ -3,8 +3,8 @@ package com.renaser.ai.ai_engine.context.impl;
 import com.renaser.ai.ai_engine.context.AgentContextProvider;
 import com.renaser.ai.ai_engine.dto.AgentRunRequest;
 import com.renaser.ai.ai_engine.model.AgentType;
+import com.renaser.ai.ai_engine.supabase.ProspectoDataProvider;
 import com.renaser.ai.ai_engine.supabase.ProspectoRecord;
-import com.renaser.ai.ai_engine.supabase.SupabaseDataService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ProspectosContextProvider implements AgentContextProvider {
 
-    private final SupabaseDataService supabaseDataService;
+    private final ProspectoDataProvider prospectoDataProvider;
 
     @Override
     public AgentType agentType() {
@@ -36,7 +36,7 @@ public class ProspectosContextProvider implements AgentContextProvider {
      */
     @Override
     public String buildContext(AgentRunRequest request) {
-        List<ProspectoRecord> prospectos = supabaseDataService.getProspectos();
+        List<ProspectoRecord> prospectos = prospectoDataProvider.getProspectos();
         if (prospectos.isEmpty()) {
             return "";
         }
