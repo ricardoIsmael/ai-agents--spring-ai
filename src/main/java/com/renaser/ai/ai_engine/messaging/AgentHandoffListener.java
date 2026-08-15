@@ -18,10 +18,12 @@ public class AgentHandoffListener {
 
     @RabbitListener(queues = AGENT_HANDOFF_QUEUE)
     public void onHandoff(AgentHandoffMessage message) {
-        log.info("Handoff recibido: run={}, entidad={}, agente siguiente={}, depth={}",
-                message.runId(), message.entityId(), message.nextAgent(), message.depth());
+        log.info("Handoff recibido: run origen={}, flow={}, entidad={}, agente siguiente={}, depth={}",
+                message.sourceRunId(), message.flowId(), message.entityId(),
+                message.nextAgent(), message.depth());
 
         AgentRunRequest nextRequest = new AgentRunRequest(message.nextAgent(), message.entityId(), message.objective());
-        agentExecutionService.enqueue(nextRequest, message.depth(), message.totalRuns());
+        agentExecutionService.enqueue(nextRequest, message.flowId(), message.sourceRunId(),
+                message.depth(), message.totalRuns());
     }
 }
