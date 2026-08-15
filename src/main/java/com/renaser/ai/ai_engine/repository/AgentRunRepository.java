@@ -18,4 +18,6 @@ public interface AgentRunRepository extends JpaRepository<AgentRun, UUID> {
     List<AgentRun> findByRequiresHumanApprovalTrueAndApprovedFalse();
     //analiza si el resultado de una agente si otro lo hizo
     Optional<AgentRun> findTopByEntityIdAndAgentTypeOrderByCreatedAtDesc(String entityId, AgentType agentType);
+    //todas las corridas de un mismo flujo, en el orden en que se dispararon
+    List<AgentRun> findByFlowIdOrderByCreatedAtAsc(UUID flowId);
 }
