@@ -308,8 +308,8 @@ estaba mal**: era un cálculo a ojo. El rastreo da el número real, y es más in
 
 | Si el primer hito es… | Tablas | Qué se deja fuera |
 |---|:--:|---|
-| Recibir postulaciones y moverlas a mano | **33** | Todo lo que puntúa |
-| Eso, más el Perfil Integral calificado por IA | **67** | Prueba, simulación, validación, desempeño, Radar |
+| Recibir postulaciones y moverlas a mano (con la Solicitud de Talento y los pesos) | **34** | Todo lo que puntúa |
+| Eso, más el Perfil Integral calificado por IA | **62** | Prueba, simulación, validación, desempeño, Radar |
 | Todo | 93 | — |
 
 **El Perfil Integral solo, duplica el esquema.** Pasa de 33 a 67 porque arrastra el banco de

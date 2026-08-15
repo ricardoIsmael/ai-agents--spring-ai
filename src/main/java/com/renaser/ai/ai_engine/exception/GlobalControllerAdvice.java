@@ -69,6 +69,54 @@ public class GlobalControllerAdvice {
     }
 
 
+    // Una regla de negocio incumplida es un 400 con explicación, no un 500 opaco:
+    // «toda transición manual exige motivo», «el archivo debe ser PDF o Word»…
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ProblemDetail handleReglaDeNegocio(IllegalArgumentException ex, WebRequest request) {
+        log.warn("Regla de negocio - Path: {}, Message: {}", request.getDescription(false), ex.getMessage());
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+        problemDetail.setTitle("La petición no cumple una regla");
+        problemDetail.setType(URI.create("https://api.renaser.com/errors/regla-de-negocio"));
+        problemDetail.setProperty("Timestap", Instant.now());
+        return problemDetail;
+    }
+
+    // El estado actual no permite la operación: 409, con el porqué
+    @ExceptionHandler(IllegalStateException.class)
+    public ProblemDetail handleEstadoInvalido(IllegalStateException ex, WebRequest request) {
+        log.warn("Estado no lo permite - Path: {}, Message: {}", request.getDescription(false), ex.getMessage());
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+        problemDetail.setTitle("El estado actual no permite esta operación");
+        problemDetail.setType(URI.create("https://api.renaser.com/errors/estado-invalido"));
+        problemDetail.setProperty("Timestap", Instant.now());
+        return problemDetail;
+    }
+
+    // Sin este handler, el genérico de abajo convertiría un «no puedes» (403) en un 500.
+    // El doc de roles exige un mensaje claro cuando falta un permiso, no un error opaco.
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ProblemDetail handleAccessDenied(org.springframework.security.access.AccessDeniedException ex,
+                                            WebRequest request) {
+        log.warn("Permiso denegado - Path: {}, Message: {}", request.getDescription(false), ex.getMessage());
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN,
+                "No tienes permiso para hacer esto. Si crees que deberías, pide el acceso al administrador.");
+        problemDetail.setTitle("Permiso denegado");
+        problemDetail.setType(URI.create("https://api.renaser.com/errors/permiso-denegado"));
+        problemDetail.setProperty("Timestap", Instant.now());
+        return problemDetail;
+    }
+
+    // El CV tiene tope de 10 MB: el error debe decirlo, no responder un 500 mudo
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    public ProblemDetail handleMaxUpload(org.springframework.web.multipart.MaxUploadSizeExceededException ex) {
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.PAYLOAD_TOO_LARGE,
+                "El archivo supera el tamaño máximo permitido (10 MB)");
+        problemDetail.setTitle("Archivo demasiado grande");
+        problemDetail.setType(URI.create("https://api.renaser.com/errors/archivo-grande"));
+        problemDetail.setProperty("Timestap", Instant.now());
+        return problemDetail;
+    }
+
     @ExceptionHandler(Exception.class)
     public ProblemDetail handelException(Exception ex, WebRequest request){
 

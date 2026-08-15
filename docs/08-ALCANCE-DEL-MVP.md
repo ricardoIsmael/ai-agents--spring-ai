@@ -71,9 +71,9 @@ Renaser pueda usar cada peldaño en una vacante real antes de subir al siguiente
 
 | Hito | Qué permite hacer | Tablas | Pantallas |
 |---|---|:--:|:--:|
-| **1 · Que entre gente** | Publicar, recibir postulaciones, mover a mano | 27 | 9 |
-| **2 · Que la máquina ordene** | La IA lee, puntúa y ordena en grupos | 59 | 12 |
-| **3 · Que se vea lo que hacen** | La prueba del puesto, y comparar dicho con hecho | 70 | 14 |
+| **1 · Que entre gente** | Solicitud aprobada, vacante publicada, postulaciones, mover a mano | 34 | 10 |
+| **2 · Que la máquina ordene** | La IA lee, puntúa y ordena en grupos | 62 | 13 |
+| **3 · Que se vea lo que hacen** | La prueba del puesto, y comparar dicho con hecho | 73 | 15 |
 
 Las tablas son acumuladas. El sistema completo son 93 tablas y 21 pantallas base.
 
@@ -86,7 +86,8 @@ proceso a mano desde el panel. Sin inteligencia artificial todavía.
 
 Qué entra:
 
-- Publicar una vacante y cerrarla
+- La Solicitud de Talento con sus resultados esperados: Talento prepara, Dirección aprueba
+- Publicar una vacante y cerrarla (solo desde una solicitud aprobada)
 - El portal del candidato: ver la vacante, crear cuenta, postular, subir el currículum
 - Los dos consentimientos por separado, con su texto guardado
 - La comprobación de los requisitos indispensables — el único descarte automático
@@ -147,7 +148,7 @@ detectado.
 
 ## Lo que queda fuera, y por qué
 
-No todas las 23 tablas que se dejan fuera se dejan por el mismo motivo. La diferencia importa.
+No todas las 20 tablas que se dejan fuera se dejan por el mismo motivo. La diferencia importa.
 
 ### Está bloqueado, y no depende de nosotros
 
@@ -170,9 +171,8 @@ No todas las 23 tablas que se dejan fuera se dejan por el mismo motivo. La difer
 
 ### Lo pidió el cliente por escrito, y notaría que falta
 
-Estas cuatro **no las decidimos nosotros**. Están en «Decisiones».
+Estas **no las decidimos nosotros**. Están en «Decisiones».
 
-- Solicitud de Talento, con sus resultados esperados y su evidencia de necesidad
 - Evaluador de Estándar, y su opinión escrita
 - La repregunta cuando una respuesta es superficial
 - La reutilización de respuestas entre puestos de familias afines
@@ -181,13 +181,13 @@ Estas cuatro **no las decidimos nosotros**. Están en «Decisiones».
 
 ## Decisiones
 
-Cinco cosas que hay que consultar con Renaser antes de cerrar el alcance. Una ya está resuelta;
+Cinco cosas que había que consultar. Dos ya están resueltas;
 las demás están en su documento nuevo, así que apartarse de ellas es decisión suya.
 
-**1 · ¿Se puede crear una vacante directamente en el MVP?** Su documento dice que toda vacante
-nace de una Solicitud de Talento aprobada. Para probar el método eso añade un flujo entero antes
-de que llegue el primer candidato. Nuestra recomendación: crear la vacante directa en el MVP y
-añadir la solicitud después. Son 3 tablas y una pantalla, y no cambia nada de lo ya construido.
+**1 · ~~¿Se puede crear una vacante directamente en el MVP?~~ RESUELTO EL 15/08: no.** Se
+respeta el flujo completo del cliente desde el día 1: la Solicitud de Talento entra en el MVP
+(+3 tablas, +1 pantalla), Talento prepara, Dirección aprueba, y solo una solicitud aprobada
+admite vacante.
 
 **2 · ¿El Evaluador de Estándar entra en el MVP?** Fue una de las contradicciones que Renaser
 resolvió **a su favor**: pasó a poder bloquear, con poder configurable. Si en el MVP no hay

@@ -27,8 +27,20 @@ spring:
   jpa:
     open-in-view: false
     hibernate:
-      ddl-auto: update
+      # Flyway es el dueño del esquema. Hibernate solo comprueba que las entidades
+      # coincidan con lo que las migraciones crearon: si algo no cuadra, no arranca.
+      ddl-auto: validate
     show-sql: true
+
+  # El esquema vive en src/main/resources/db/migration, versionado. Nadie toca tablas a mano.
+  flyway:
+    enabled: true
+
+  # El CV pesa hasta 10 MB (regla del portal). El request completo un poco más, por el multipart.
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 12MB
 
   rabbitmq:
     host: localhost
@@ -57,3 +69,16 @@ server:
 supabase:
   url: https://ikyjurujfxpazygwloja.supabase.co
   service-role-key: ${SUPABASE_SERVICE_ROLE_KEY:}
+
+# Configuración propia del módulo de reclutamiento
+app:
+  archivos:
+    # Dónde se guardan los CV en disco. En producción apunta a un volumen propio.
+    ruta: ${ARCHIVOS_RUTA:./almacen-archivos}
+  seguridad:
+    # Clave HMAC para firmar los tokens. Va en application-secrets.yaml (no se versiona)
+    # o por variable de entorno. Mínimo 32 bytes; sin ella la aplicación no arranca.
+    jwt-secreto: ${JWT_SECRETO:}
+    # Cuánto vive un token de candidato y uno del equipo (en minutos)
+    minutos-token-candidato: 120
+    minutos-token-equipo: 480

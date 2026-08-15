@@ -32,6 +32,7 @@
 		<org.mapstruct.version>1.6.3</org.mapstruct.version>
 		<!-- springdoc 3.x es la linea para Spring Boot 4. La 2.x es de Boot 3 y no arranca aqui -->
 		<springdoc.version>3.1.0</springdoc.version>
+		<testcontainers.version>2.0.5</testcontainers.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -40,14 +41,22 @@
 		</dependency>
 
 		<!-- Migraciones: el esquema vive en archivos versionados, nadie toca tablas a mano.
-		     Desde Flyway 10 el soporte de PostgreSQL va en su propio artefacto. -->
+		     En Boot 4 la autoconfiguración de Flyway va en su propio starter: con solo
+		     flyway-core en el classpath, Flyway NUNCA corre y nadie avisa. -->
 		<dependency>
-			<groupId>org.flywaydb</groupId>
-			<artifactId>flyway-core</artifactId>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-flyway</artifactId>
 		</dependency>
+		<!-- Desde Flyway 10 el soporte de PostgreSQL va en su propio artefacto -->
 		<dependency>
 			<groupId>org.flywaydb</groupId>
 			<artifactId>flyway-database-postgresql</artifactId>
+		</dependency>
+		<!-- Autoconfiguración de Flyway en los tests de slice (@DataJpaTest) -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-flyway-test</artifactId>
+			<scope>test</scope>
 		</dependency>
 
 		<!-- Identidad y permisos: Spring Boot es el dueno, no se delega en la base -->
@@ -123,10 +132,33 @@
 			<artifactId>spring-boot-starter-webmvc-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+
+		<!-- Tests de integracion contra un Postgres real y efimero: las migraciones se
+		     prueban donde van a correr, no contra H2 -->
 		<dependency>
-			<groupId>org.springdoc</groupId>
-			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-			<version>3.0.3</version>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-testcontainers</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>testcontainers-junit-jupiter</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>testcontainers-postgresql</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.testcontainers</groupId>
+			<artifactId>testcontainers-rabbitmq</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.security</groupId>
+			<artifactId>spring-security-test</artifactId>
+			<scope>test</scope>
 		</dependency>
 	</dependencies>
 	<dependencyManagement>
@@ -138,6 +170,14 @@
 				<type>pom</type>
 				<scope>import</scope>
 			</dependency>
+			<!-- Boot 4 ya no gestiona las versiones de Testcontainers: hace falta su BOM -->
+			<dependency>
+				<groupId>org.testcontainers</groupId>
+				<artifactId>testcontainers-bom</artifactId>
+				<version>${testcontainers.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
 		</dependencies>
 	</dependencyManagement>
 
@@ -146,6 +186,23 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<!-- Los tests de integración terminan en IT y también corren aquí -->
+					<includes>
+						<include>**/*Test.java</include>
+						<include>**/*Tests.java</include>
+						<include>**/*IT.java</include>
+					</includes>
+					<environmentVariables>
+						<!-- Docker Desktop: dentro de su VM el socket es el estándar. En un
+						     Docker normal esto es la misma ruta, así que no estorba. -->
+						<TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE>/var/run/docker.sock</TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE>
+					</environmentVariables>
+				</configuration>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>

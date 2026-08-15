@@ -726,7 +726,11 @@ El puntaje de un criterio para una postulación, y por qué.
 | `motivo_ajuste` | text | no | **Obligatorio si hay ajuste** |
 | `ajustada_en` | timestamptz | no | |
 
-**Clave primaria:** `id` · **Único:** `postulacion_id` + `criterio_id`
+**Clave primaria:** `id` · **Único:** `postulacion_id`
+
+`resultado_orgulloso` es «cuéntanos qué cambió gracias a tu trabajo y cómo lo comprobaste», que
+el formulario exige. Vive aquí y no en la postulación porque es evidencia del candidato, como el
+CV, y se vacía junto con él al anonimizar. + `criterio_id`
 **Restricción:** `motivo_ajuste` no puede estar vacío si `ajustada_por_usuario_id` no lo está
 
 `origen` dice de dónde salió el valor. En la validación práctica es lo que permite mostrar si la
@@ -749,6 +753,7 @@ El currículum de una postulación, en sus dos versiones.
 | `archivo_original_id` | bigint | no | Lo que subió. Se borra al anonimizar |
 | `archivo_anonimizado_id` | bigint | no | Lo único que ve la máquina |
 | `texto_extraido` | text | no | Ya sin los datos ocultos |
+| `resultado_orgulloso` | text | no | El texto obligatorio del formulario de postular. Se vacía al anonimizar |
 
 **Clave primaria:** `id` · **Único:** `postulacion_id`
 
@@ -2001,6 +2006,10 @@ A quién, cuándo y **qué decía**.
 
 Se guarda el cuerpo **ya armado**, no solo cuál plantilla se usó. Si mañana alguien edita la
 plantilla, lo que se le envió a esa persona sigue siendo lo que dice el registro.
+
+⚠️ **Al ejecutar un borrado de datos, `asunto` y `cuerpo` se sobrescriben** con «[eliminado por
+solicitud de borrado]»: el cuerpo armado contiene el nombre y el correo de la persona. La fila se
+conserva, así que se sigue sabiendo qué plantilla, qué versión y cuándo.
 
 ## `seguimiento_desempeno`
 

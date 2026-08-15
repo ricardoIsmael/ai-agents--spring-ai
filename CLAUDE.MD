@@ -40,20 +40,22 @@ hablan por HTTP**: no comparten base de datos, asi que no hay claves foraneas co
 | Tareas, tiempos, bloqueos, retrabajo | Se leen de su API. Alimentan las metricas de la validacion |
 | Objetivos y resultados del personal | Se leen de su API. Es la fuente del seguimiento 30/90/180 |
 
-## Donde estamos (15/08/2026)
-**Documentacion cerrada, codigo sin empezar.**
+## Donde estamos (15/08/2026, tarde)
+**El hito 1 esta implementado y probado. Los hitos 2 y 3, no.**
 
 | | |
 |---|---|
-| Documentacion | Los diez documentos de `docs/` estan al dia y verificados entre si |
-| Base de datos | **Vacia. No hay ni una migracion de Flyway escrita todavia** |
-| Codigo | El esqueleto de Spring Boot compila; no hay ninguna entidad ni endpoint del dominio |
+| Base de datos | **Flyway es el dueno del esquema**: V1-V9 en `src/main/resources/db/migration` crean las 34 tablas del hito 1 con semillas. `ddl-auto: validate` |
+| Codigo | Paquete `reclutamiento/` con seguridad (dos puertas + permisos con alcance), maquina de estados, portal y panel completos del hito 1 |
+| Tests | 12 en verde: unitario de la maquina, migraciones contra Postgres real (Testcontainers) y el flujo entero de punta a punta (`FlujoHito1IT`) |
+| Correo | Se registra en `correo_enviado` pero NO se envia: falta el dominio de Renaser (`EnviadorCorreoLog`) |
+| Identidad equipo | `dev-login` de desarrollo; el contrato de RENASER OS no existe aun (`ProveedorIdentidadEquipo`) |
 | Mockups | Los mantiene otra persona y **describen la version anterior** |
 
-Lo siguiente es el **hito 1 del [documento 08](docs/08-ALCANCE-DEL-MVP.md)**: 27 tablas, sin nada
-de IA. Antes de escribir la primera migracion, leer ese documento entero — sobre todo «Lo que se
-deja preparado para no reescribir despues», que dice que cosas del sistema completo tienen que
-existir desde el primer dia aunque el hito 1 no las use.
+Reglas al tocar el codigo del hito 1: toda transicion pasa por `MaquinaEstados.transicionar`
+(nunca tocar `postulacion.estado_codigo` a mano); el alcance se aplica en queries via
+`Permisos.alcanceDe`; el esquema solo cambia con una migracion nueva (nunca editar una aplicada).
+Los hitos 2 y 3 estan definidos en el [documento 08](docs/08-ALCANCE-DEL-MVP.md).
 
 ## Documentos del proyecto
 Todo vive en `docs/`. Empezar por [docs/README.md](docs/README.md).
@@ -74,8 +76,11 @@ Todo vive en `docs/`. Empezar por [docs/README.md](docs/README.md).
   y que tiene que vivir en el codigo. Se lee para entender el modelo.
 - [Diccionario de datos](docs/07-DICCIONARIO-DE-DATOS.md) — cada tabla con todas sus columnas,
   tipos y claves. Se consulta. **Es la base de las migraciones de Flyway.**
+- [Las APIs](docs/09-APIS.md) — las dos puertas (portal/panel), como entrar y que hace cada
+  endpoint. La referencia viva es Swagger en `/swagger-ui.html`.
 - [Alcance del MVP](docs/08-ALCANCE-DEL-MVP.md) — **el cliente quiere un MVP, no el sistema
-  completo.** Tres hitos: 27 tablas, 59 y 70, cada uno usable solo. Dice tambien que se deja
+  completo.** Tres hitos: 34 tablas, 62 y 73, cada uno usable solo. **El hito 1 ya esta
+  implementado.** Dice tambien que se deja
   puesto desde el hito 1 para no reescribir despues. **Leerlo antes de escribir cualquier
   migracion.**
 - `docs/diagramas/` — HTML autocontenidos, se abren en el navegador.
