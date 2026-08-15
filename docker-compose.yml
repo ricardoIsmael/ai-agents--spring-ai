@@ -27,6 +27,11 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
+      # El consumidor llama al modelo de forma síncrona y una inferencia en CPU puede tardar
+      # decenas de minutos. Con el valor por defecto (30 min) el broker da el mensaje por
+      # perdido y lo reencola, reprocesando el mismo trabajo. 60 min da margen; el corte real
+      # lo pone el read-timeout de la aplicación y el x-delivery-limit de las colas.
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "-rabbit consumer_timeout 3600000"
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
