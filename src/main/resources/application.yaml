@@ -9,6 +9,15 @@ spring:
     virtual:
       enabled: true
 
+  # Techo duro a la llamada al modelo. Una corrida normal tarda 70-90 s en CPU; hoy hubo una
+  # patológica de 31 min que cruzó el consumer_timeout de RabbitMQ. Con esto la corrida se
+  # corta, se marca como fallida y queda visible en la traza en vez de bloquear el consumidor.
+  # Sobre GPU este valor debería bajar a ~60 s.
+  http:
+    client:
+      connect-timeout: 10s
+      read-timeout: 10m
+
   datasource:
     url: jdbc:postgresql://localhost:5433/renaser_db
     username: postgres
