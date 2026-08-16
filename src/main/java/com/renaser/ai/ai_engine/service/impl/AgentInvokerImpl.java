@@ -7,6 +7,7 @@ import com.renaser.ai.ai_engine.dto.AgentRunRequest;
 import com.renaser.ai.ai_engine.model.AgentRun;
 import com.renaser.ai.ai_engine.prompt.AgentPromptProvider;
 import com.renaser.ai.ai_engine.prompt.ChatOptionsFactory;
+import com.renaser.ai.ai_engine.service.AgentInvoker;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.beans.factory.annotation.Value;
@@ -18,13 +19,12 @@ import tools.jackson.databind.json.JsonMapper;
 import java.time.Instant;
 
 /**
- * Aísla la llamada al modelo (prompt + contexto + parseo tipado) y el volcado del resultado
- * sobre un AgentRun. Separado de AgentExecutionServiceImpl para que la orquestación del flujo
- * (guardar, encolar, publicar handoff) no dependa de los detalles de cómo se habla con el LLM.
+ * Conversación con DeepSeek: arma el prompt, resuelve el contexto, pide el envelope tipado
+ * y lo vuelca sobre la corrida.
  */
 @Component
 @Slf4j
-public class AgentInvoker {
+public class AgentInvokerImpl implements AgentInvoker {
 
     private static final String CONTRACT_VERSION = "v2";
 
@@ -36,13 +36,13 @@ public class AgentInvoker {
     private final JsonMapper jsonMapper;
     private final int maxIntentos;
 
-    public AgentInvoker(ChatClient chatClient,
-                        AgentPromptProvider agentPromptProvider,
-                        ChatOptionsFactory chatOptionsFactory,
-                        AgentResponseTypeRegistry agentResponseTypeRegistry,
-                        AgentContextResolver agentContextResolver,
-                        JsonMapper jsonMapper,
-                        @Value("${renaser.ai.chat.max-intentos}") int maxIntentos) {
+    public AgentInvokerImpl(ChatClient chatClient,
+                            AgentPromptProvider agentPromptProvider,
+                            ChatOptionsFactory chatOptionsFactory,
+                            AgentResponseTypeRegistry agentResponseTypeRegistry,
+                            AgentContextResolver agentContextResolver,
+                            JsonMapper jsonMapper,
+                            @Value("${renaser.ai.chat.max-intentos}") int maxIntentos) {
         this.chatClient = chatClient;
         this.agentPromptProvider = agentPromptProvider;
         this.chatOptionsFactory = chatOptionsFactory;
@@ -65,6 +65,7 @@ public class AgentInvoker {
      * No hay backoff a propósito: ninguno de los dos fallos es por saturación del proveedor,
      * así que esperar no aporta nada y solo alarga una corrida que ya tarda decenas de segundos.
      */
+    @Override
     public AgentResponse<?> ask(AgentRunRequest request) {
         String systemPrompt = agentPromptProvider.getSystemPrompt(request.agentType());
         String userMessage = agentContextResolver.buildUserMessage(request);
@@ -91,6 +92,7 @@ public class AgentInvoker {
                         .formatted(request.agentType(), maxIntentos), ultimoFallo);
     }
 
+    @Override
     public void applyResult(AgentRun run, AgentResponse<?> aiResult) {
         run.setVersion(CONTRACT_VERSION);
         run.setOutputJson(writeJson(aiResult));
