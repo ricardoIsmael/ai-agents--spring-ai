@@ -11,6 +11,7 @@ import com.renaser.ai.ai_engine.messaging.AgentHandoffPublisher;
 import com.renaser.ai.ai_engine.model.AgentRun;
 import com.renaser.ai.ai_engine.repository.AgentRunRepository;
 import com.renaser.ai.ai_engine.service.AgentExecutionService;
+import com.renaser.ai.ai_engine.service.AgentInvoker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
