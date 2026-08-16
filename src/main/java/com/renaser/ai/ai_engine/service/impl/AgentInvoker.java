@@ -7,8 +7,9 @@ import com.renaser.ai.ai_engine.dto.AgentRunRequest;
 import com.renaser.ai.ai_engine.model.AgentRun;
 import com.renaser.ai.ai_engine.prompt.AgentPromptProvider;
 import com.renaser.ai.ai_engine.prompt.ChatOptionsFactory;
-import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Component;
 import tools.jackson.core.JacksonException;
@@ -22,7 +23,7 @@ import java.time.Instant;
  * (guardar, encolar, publicar handoff) no dependa de los detalles de cómo se habla con el LLM.
  */
 @Component
-@RequiredArgsConstructor
+@Slf4j
 public class AgentInvoker {
 
     private static final String CONTRACT_VERSION = "v2";
@@ -33,25 +34,61 @@ public class AgentInvoker {
     private final AgentResponseTypeRegistry agentResponseTypeRegistry;
     private final AgentContextResolver agentContextResolver;
     private final JsonMapper jsonMapper;
+    private final int maxIntentos;
 
+    public AgentInvoker(ChatClient chatClient,
+                        AgentPromptProvider agentPromptProvider,
+                        ChatOptionsFactory chatOptionsFactory,
+                        AgentResponseTypeRegistry agentResponseTypeRegistry,
+                        AgentContextResolver agentContextResolver,
+                        JsonMapper jsonMapper,
+                        @Value("${renaser.ai.chat.max-intentos}") int maxIntentos) {
+        this.chatClient = chatClient;
+        this.agentPromptProvider = agentPromptProvider;
+        this.chatOptionsFactory = chatOptionsFactory;
+        this.agentResponseTypeRegistry = agentResponseTypeRegistry;
+        this.agentContextResolver = agentContextResolver;
+        this.jsonMapper = jsonMapper;
+        this.maxIntentos = maxIntentos;
+    }
+
+    /**
+     * Reintenta ante fallo de parseo porque sin structured output nativo el contrato JSON no
+     * está garantizado por el proveedor. En la corrida end-to-end del 2026-08-16, 6 de 18
+     * agentes fallaron por dos motivos, ambos transitorios y ambos resueltos por reintento:
+     * <p>
+     * - Respuesta vacía (4 casos). DeepSeek documenta que ocasionalmente devuelve content
+     *   vacío; Jackson lo reporta como "No content to map due to end-of-input".
+     * - Envelope truncado (2 casos). Se corrigió subiendo max-tokens, pero el reintento queda
+     *   como red de seguridad si un contexto grande vuelve a acercarse al techo.
+     * <p>
+     * No hay backoff a propósito: ninguno de los dos fallos es por saturación del proveedor,
+     * así que esperar no aporta nada y solo alarga una corrida que ya tarda decenas de segundos.
+     */
     public AgentResponse<?> ask(AgentRunRequest request) {
         String systemPrompt = agentPromptProvider.getSystemPrompt(request.agentType());
+        String userMessage = agentContextResolver.buildUserMessage(request);
         ParameterizedTypeReference<?> responseType = agentResponseTypeRegistry.resolve(request.agentType());
 
-        // Sin useProviderStructuredOutput(): DeepSeek expone JSON mode (json_object) pero no
-        // JSON Schema estricto, así que no hay structured output nativo del proveedor al que
-        // delegar. El converter de Spring AI inyecta el schema en el prompt y auto-corrige
-        // si la salida no parsea. La contracara es que el contrato deja de estar garantizado
-        // por el proveedor y pasa a depender del prompt: por eso se mide la tasa de parseo
-        // al primer intento antes de mover agentes a modelos más baratos.
-        Object result = chatClient.prompt()
-                .system(systemPrompt)
-                .user(agentContextResolver.buildUserMessage(request))
-                .options(chatOptionsFactory.forAgent(request.agentType()))
-                .call()
-                .entity(responseType);
+        JacksonException ultimoFallo = null;
+        for (int intento = 1; intento <= maxIntentos; intento++) {
+            try {
+                return (AgentResponse<?>) chatClient.prompt()
+                        .system(systemPrompt)
+                        .user(userMessage)
+                        .options(chatOptionsFactory.forAgent(request.agentType()))
+                        .call()
+                        .entity(responseType);
+            } catch (JacksonException e) {
+                ultimoFallo = e;
+                log.warn("Intento {}/{} de {} devolvió un envelope no parseable: {}",
+                        intento, maxIntentos, request.agentType(), e.getMessage());
+            }
+        }
 
-        return (AgentResponse<?>) result;
+        throw new IllegalStateException(
+                "El agente %s no devolvió un envelope válido en %d intentos"
+                        .formatted(request.agentType(), maxIntentos), ultimoFallo);
     }
 
     public void applyResult(AgentRun run, AgentResponse<?> aiResult) {
