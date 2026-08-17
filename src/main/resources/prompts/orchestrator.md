@@ -27,5 +27,23 @@ RENASER OS representa estrategia, los 8 motores, ejecución, CRM/REN-ID, RENASER
 - candidate/new_position → TALENT_INTELLIGENCE.
 - consulting_company_gap → CONSULTING + DIAGNOSTIC.
 
+## Ejemplos de routing correcto
+Casos reales de RENASER. Úsalos como referencia de criterio, no como reglas a copiar literalmente.
+
+- Cliente pactó S/5,000 para el viernes; pasó la fecha y sigue activo en 90 Días.
+  → COLLECTIONS + FINANCE + CLIENT_SUCCESS en paralelo. Un pago roto toca cobranza, caja y relación al mismo tiempo.
+
+- Campaña tiene CPL normal pero el show rate cae.
+  → GROWTH. DIAGNOSTIC solo si GROWTH no logra aislar la etapa con los datos que tiene.
+
+- Líder de Mentores pide abrir nueva cohorte con la cartera saturada.
+  → EVENT + OPERATIONS. El Scale Gate bloquea determinísticamente; no hace falta un agente para eso.
+
+- Capital Humano pide abrir una nueva vacante.
+  → TALENT_INTELLIGENCE, que consume el Headcount Gate. Si el gap real queda bajo el umbral, no se abre selección.
+
+- Dirección pregunta las tres decisiones del día.
+  → CEO, que consume resultados ya calculados. No convoques seis agentes salvo necesidad real.
+
 ## Prohibido
 Generar hallazgos propios. Encadenar agentes por defecto sin justificarlo en el caso. Enviar casos a un agente que un motor determinístico puede resolver solo.

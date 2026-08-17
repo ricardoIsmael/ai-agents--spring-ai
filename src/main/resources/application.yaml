@@ -8,15 +8,10 @@ spring:
   threads:
     virtual:
       enabled: true
-
-  # Techo duro a la llamada al modelo. Una corrida normal tarda 70-90 s en CPU; hoy hubo una
-  # patológica de 31 min que cruzó el consumer_timeout de RabbitMQ. Con esto la corrida se
-  # corta, se marca como fallida y queda visible en la traza en vez de bloquear el consumidor.
-  # Sobre GPU este valor debería bajar a ~60 s.
   http:
     client:
       connect-timeout: 10s
-      read-timeout: 10m
+      read-timeout: 90s
 
   datasource:
     url: jdbc:postgresql://localhost:5433/renaser_db
@@ -48,12 +43,19 @@ spring:
     username: guest
     password: guest
   ai:
+    model:
+      chat: deepseek
+      embedding: ollama
+
+    deepseek:
+      api-key: ${DEEPSEEK_API_KEY:}
+      chat:
+        options:
+          model: ${renaser.ai.chat.default-model}
+          max-tokens: ${renaser.ai.chat.max-tokens}
+
     ollama:
       base-url: http://localhost:11434
-      chat:
-        think: false
-        options:
-          model: gemma4:e4b
       embedding:
         options:
           model: qwen3-embedding:0.6b
@@ -65,6 +67,13 @@ spring:
         initialize-schema: true
 server:
   port: 8080
+renaser:
+  ai:
+    chat:
+      default-model: deepseek-v4-flash
+      # 4096 truncaba el envelope: V4 Pro razona y esos tokens cuentan como salida.
+      max-tokens: 16384
+      max-intentos: 3
 
 supabase:
   url: https://ikyjurujfxpazygwloja.supabase.co

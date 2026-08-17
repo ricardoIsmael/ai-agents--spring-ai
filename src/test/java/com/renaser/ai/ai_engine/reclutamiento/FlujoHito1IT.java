@@ -10,18 +10,26 @@ import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.core.io.FileSystemResource;
+
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestClient;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.rabbitmq.RabbitMQContainer;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -33,11 +41,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 // -> vacante -> publicar -> cuenta -> login -> postular con CV -> bandeja -> avance ->
 // transición manual -> retiro. Y las reglas duras: motivo obligatorio, transiciones
 // inmutables, alcance por vacante.
-@SpringBootTest
+// Con puerto real (además de MockMvc) porque el tope de subida solo lo aplica el contenedor.
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
 @Testcontainers
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class FlujoHito1IT {
+
+    @LocalServerPort int puerto;
+    final RestClient http = RestClient.create();
 
     @Container
     @ServiceConnection
@@ -55,6 +67,9 @@ public class FlujoHito1IT {
         registro.add("app.archivos.ruta", () -> carpetaArchivos.toString());
         registro.add("app.seguridad.jwt-secreto",
                 () -> "clave-de-pruebas-suficientemente-larga-para-hmac-256-bits");
+        // El chat de agentes exige una clave para construir su bean. Aquí nadie llama al
+        // modelo, pero sin este valor el contexto entero no arranca.
+        registro.add("spring.ai.deepseek.api-key", () -> "clave-de-pruebas-no-se-usa");
     }
 
     @Autowired MockMvc mvc;
@@ -168,6 +183,25 @@ public class FlujoHito1IT {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].estado").value("PERFIL_TURNO_CANDIDATO"));
         assertThat(carpetaArchivos.resolve("1").toFile().listFiles()).hasSize(1);
+
+        // Un CV de más de 10 MB responde 413 con explicación, no un 500 mudo. Va por HTTP real
+        // y no por MockMvc a propósito: el tope lo aplica el contenedor al leer el multipart,
+        // antes de que se sepa qué método atiende la llamada, y MockMvc no tiene contenedor.
+        // Por lo mismo su manejador no puede ir limitado a un paquete (si lo está, sale 500).
+        Path enorme = carpetaArchivos.resolve("enorme.pdf");
+        Files.write(enorme, new byte[13 * 1024 * 1024]);
+        MultiValueMap<String, Object> cuerpo = new LinkedMultiValueMap<>();
+        cuerpo.add("cv", new FileSystemResource(enorme));
+        cuerpo.add("vacanteId", vacanteId);
+        cuerpo.add("resultadoOrgulloso", "algo");
+
+        HttpStatusCode estado = http.post()
+                .uri("http://localhost:" + puerto + "/api/v1/portal/postulaciones")
+                .header("Authorization", "Bearer " + tokenCandidato)
+                .contentType(MediaType.MULTIPART_FORM_DATA)
+                .body(cuerpo)
+                .exchange((peticionEnviada, respuestaRecibida) -> respuestaRecibida.getStatusCode(), false);
+        assertThat(estado.value()).isEqualTo(413);
     }
 
     @Test

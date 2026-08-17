@@ -28,6 +28,9 @@ class AiEngineApplicationTests {
 	static void propiedades(DynamicPropertyRegistry registro) {
 		registro.add("app.seguridad.jwt-secreto",
 				() -> "clave-de-pruebas-suficientemente-larga-para-hmac-256-bits");
+		// El chat de agentes exige una clave para construir su bean. Aquí nadie llama al
+		// modelo, pero sin este valor el contexto entero no arranca.
+		registro.add("spring.ai.deepseek.api-key", () -> "clave-de-pruebas-no-se-usa");
 	}
 
 	@Test

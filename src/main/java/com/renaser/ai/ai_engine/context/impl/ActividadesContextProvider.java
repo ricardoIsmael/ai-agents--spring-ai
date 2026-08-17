@@ -3,8 +3,8 @@ package com.renaser.ai.ai_engine.context.impl;
 import com.renaser.ai.ai_engine.context.AgentContextProvider;
 import com.renaser.ai.ai_engine.dto.AgentRunRequest;
 import com.renaser.ai.ai_engine.model.AgentType;
+import com.renaser.ai.ai_engine.supabase.ActividadDataProvider;
 import com.renaser.ai.ai_engine.supabase.ActividadRecord;
-import com.renaser.ai.ai_engine.supabase.SupabaseDataService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ActividadesContextProvider implements AgentContextProvider {
 
-    private final SupabaseDataService supabaseDataService;
+    private final ActividadDataProvider actividadDataProvider;
 
     @Override
     public AgentType agentType() {
@@ -28,7 +28,7 @@ public class ActividadesContextProvider implements AgentContextProvider {
 
     @Override
     public String buildContext(AgentRunRequest request) {
-        return supabaseDataService.getActividadesBloqueadas().stream()
+        return actividadDataProvider.getActividadesBloqueadas().stream()
                 .map(this::describe)
                 .collect(Collectors.joining("\n"));
     }

@@ -1,5 +1,6 @@
-package com.renaser.ai.ai_engine.supabase;
+package com.renaser.ai.ai_engine.config;
 
+import com.renaser.ai.ai_engine.supabase.SupabaseProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

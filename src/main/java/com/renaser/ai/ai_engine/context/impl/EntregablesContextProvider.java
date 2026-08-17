@@ -3,8 +3,8 @@ package com.renaser.ai.ai_engine.context.impl;
 import com.renaser.ai.ai_engine.context.AgentContextProvider;
 import com.renaser.ai.ai_engine.dto.AgentRunRequest;
 import com.renaser.ai.ai_engine.model.AgentType;
+import com.renaser.ai.ai_engine.supabase.EntregableDataProvider;
 import com.renaser.ai.ai_engine.supabase.EntregableRecord;
-import com.renaser.ai.ai_engine.supabase.SupabaseDataService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class EntregablesContextProvider implements AgentContextProvider {
 
-    private final SupabaseDataService supabaseDataService;
+    private final EntregableDataProvider entregableDataProvider;
 
     @Override
     public AgentType agentType() {
@@ -28,7 +28,7 @@ public class EntregablesContextProvider implements AgentContextProvider {
 
     @Override
     public String buildContext(AgentRunRequest request) {
-        return supabaseDataService.getEntregablesPendientes().stream()
+        return entregableDataProvider.getEntregablesPendientes().stream()
                 .map(this::describe)
                 .collect(Collectors.joining("\n"));
     }
