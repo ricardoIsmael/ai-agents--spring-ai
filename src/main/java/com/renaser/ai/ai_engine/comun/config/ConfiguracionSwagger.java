@@ -2,6 +2,7 @@ package com.renaser.ai.ai_engine.comun.config;
 
 import com.renaser.ai.ai_engine.administracion.controller.AdministracionController;
 import com.renaser.ai.ai_engine.ai.controller.perfilintegral.AgentesIaPanelController;
+import com.renaser.ai.ai_engine.catalogo.controller.CatalogoController;
 import com.renaser.ai.ai_engine.perfilintegral.controller.BancoPreguntasController;
 import com.renaser.ai.ai_engine.perfilintegral.controller.PlantillasEvaluacionController;
 import com.renaser.ai.ai_engine.pesos.controller.PesosController;
@@ -45,6 +46,7 @@ public class ConfiguracionSwagger {
             VacantesPanelController.class,
             PostulacionesPanelController.class,
             PanelAuthController.class,
+            CatalogoController.class,
             BancoPreguntasController.class,
             PlantillasEvaluacionController.class,
             PesosController.class,

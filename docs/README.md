@@ -34,6 +34,7 @@ requisitos nuevos el 14 de agosto y cambian bastante.
 | [07 · Diccionario de datos](07-DICCIONARIO-DE-DATOS.md) | Cada tabla con todas sus columnas, tipos y claves. Se consulta |
 | [08 · Alcance del MVP](08-ALCANCE-DEL-MVP.md) | Qué se construye primero, en tres hitos, y qué queda fuera |
 | [09 · Las APIs](09-APIS.md) | Las dos puertas, cómo entrar y qué hace cada endpoint. La referencia viva es Swagger |
+| [Curso del backend](CURSO-BACKEND.md) | Ruta para entender el código que existe, en orden. Para quien entra al proyecto |
 
 ### Diagramas
 

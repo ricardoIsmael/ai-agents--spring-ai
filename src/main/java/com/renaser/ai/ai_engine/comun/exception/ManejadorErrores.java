@@ -2,6 +2,7 @@ package com.renaser.ai.ai_engine.comun.exception;
 
 import com.renaser.ai.ai_engine.administracion.controller.AdministracionController;
 import com.renaser.ai.ai_engine.ai.controller.perfilintegral.AgentesIaPanelController;
+import com.renaser.ai.ai_engine.catalogo.controller.CatalogoController;
 import com.renaser.ai.ai_engine.perfilintegral.controller.BancoPreguntasController;
 import com.renaser.ai.ai_engine.perfilintegral.controller.PlantillasEvaluacionController;
 import com.renaser.ai.ai_engine.pesos.controller.PesosController;
@@ -13,6 +14,7 @@ import com.renaser.ai.ai_engine.seguridad.exception.DemasiadosIntentosException;
 import com.renaser.ai.ai_engine.solicitud.controller.SolicitudesController;
 import com.renaser.ai.ai_engine.vacante.controller.VacantesPanelController;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpHeaders;
@@ -26,6 +28,8 @@ import org.springframework.web.context.request.WebRequest;
 
 import java.net.URI;
 import java.time.Instant;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Los errores propios del módulo de selección de personal.
@@ -46,6 +50,7 @@ import java.time.Instant;
         VacantesPanelController.class,
         PostulacionesPanelController.class,
         PanelAuthController.class,
+        CatalogoController.class,
         BancoPreguntasController.class,
         PlantillasEvaluacionController.class,
         PesosController.class,
@@ -102,6 +107,51 @@ public class ManejadorErrores {
         log.warn("Permiso denegado - Path: {}, Message: {}", request.getDescription(false), ex.getMessage());
         return construir(HttpStatus.FORBIDDEN, "Permiso denegado", "permiso-denegado",
                 "No tienes permiso para hacer esto. Si crees que deberías, pide el acceso al administrador.");
+    }
+
+    /* Mandar un código que no existe —una familia, un nivel, un puesto— reventaba con un 500
+       mudo: la base rechaza la clave foránea y nadie traducía ese fallo. Es un dato malo de
+       quien llama, no una avería del sistema, así que es un 400 que dice cuál es el dato. */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ProblemDetail datoQueNoCuadra(DataIntegrityViolationException ex, WebRequest request) {
+        log.warn("Integridad de datos - Path: {}, Message: {}",
+                request.getDescription(false), ex.getMostSpecificCause().getMessage());
+        return construir(HttpStatus.BAD_REQUEST, "Hay un dato que no cuadra",
+                "dato-invalido", explicar(ex));
+    }
+
+    /* El mensaje de Postgres trae el nombre de la restricción y el valor culpable. Se saca lo
+       justo para que quien lo lea sepa qué corregir, sin enseñar el SQL entero. */
+    private static String explicar(DataIntegrityViolationException ex) {
+        String causa = ex.getMostSpecificCause().getMessage();
+        if (causa == null) return "Alguno de los datos enviados no es válido.";
+
+        Matcher clave = Pattern.compile("Key \\((\\w+)\\)=\\(([^)]*)\\)").matcher(causa);
+        String campo = clave.find() ? clave.group(1) : null;
+        String valor = campo != null ? clave.group(2) : null;
+
+        if (causa.contains("is not present in table")) {
+            return campo != null
+                    ? "El valor «%s» de %s no existe. Consulta los valores admitidos en /panel/catalogos."
+                            .formatted(valor, campo)
+                    : "Uno de los códigos enviados no existe en el sistema.";
+        }
+        if (causa.contains("duplicate key") || causa.contains("already exists")) {
+            return campo != null
+                    ? "Ya existe un registro con %s = «%s».".formatted(campo, valor)
+                    : "Ya existe un registro con esos datos.";
+        }
+        if (causa.contains("violates not-null")) {
+            Matcher col = Pattern.compile("column \"(\\w+)\"").matcher(causa);
+            return col.find()
+                    ? "Falta un dato obligatorio: %s.".formatted(col.group(1))
+                    : "Falta un dato obligatorio.";
+        }
+        if (causa.contains("violates check constraint")) {
+            return "Alguno de los valores enviados no está entre los admitidos. "
+                    + "Consulta los valores válidos en /panel/catalogos.";
+        }
+        return "Alguno de los datos enviados no es válido.";
     }
 
     static ProblemDetail construir(HttpStatus estado, String titulo, String sufijoTipo, String detalle) {

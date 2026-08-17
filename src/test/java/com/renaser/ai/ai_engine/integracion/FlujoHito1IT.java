@@ -119,6 +119,23 @@ public class FlujoHito1IT {
                 "{\"motivo\":\"Justificada: hay presupuesto\"}")
                 .andExpect(status().isOk());
 
+        // Los catálogos se sirven: sin esto, cualquier formulario tendría que llevar los
+        // códigos escritos a mano, que es justo lo que ya se desincronizó una vez.
+        conTokenGet("/api/v1/panel/catalogos", tokenEquipo)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estados.length()").value(18))
+                .andExpect(jsonPath("$.familias.length()").value(7))
+                .andExpect(jsonPath("$.nivelesPuesto.length()").value(3))
+                .andExpect(jsonPath("$.urgencias.length()").value(3));
+
+        // Un código que no existe es un dato malo de quien llama, no una avería: 400 con el
+        // valor culpable dentro. Antes reventaba con un 500 mudo.
+        conToken(post("/api/v1/panel/puestos"), tokenEquipo, """
+                {"codigo": "NO_VALE", "nombre": "Puesto imposible",
+                 "nivelPuestoCodigo": "EJECUCION", "familiaCodigo": "NO_EXISTE"}""")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("NO_EXISTE")));
+
         long puestoId = Long.parseLong(leer(conToken(post("/api/v1/panel/puestos"), tokenEquipo,
                 """
                 {"codigo": "DEV_WEB", "nombre": "Desarrollador web",
