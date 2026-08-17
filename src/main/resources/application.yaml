@@ -1,0 +1,68 @@
+spring:
+  application:
+    name: ai-engine
+
+  config:
+    import: optional:file:./application-secrets.yaml
+
+  threads:
+    virtual:
+      enabled: true
+  http:
+    client:
+      connect-timeout: 10s
+      read-timeout: 90s
+
+  datasource:
+    url: jdbc:postgresql://localhost:5433/renaser_db
+    username: postgres
+    password: postgrespassword
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+  ai:
+    model:
+      chat: deepseek
+      embedding: ollama
+
+    deepseek:
+      api-key: "${DEEPSEEK_API_KEY:}"
+      chat:
+        options:
+          model: ${renaser.ai.chat.default-model}
+          max-tokens: ${renaser.ai.chat.max-tokens}
+
+    ollama:
+      base-url: http://localhost:11434
+      embedding:
+        options:
+          model: qwen3-embedding:0.6b
+    vectorstore:
+      pgvector:
+        index-type: HNSW
+        distance-type: COSINE_DISTANCE
+        dimensions: 1024
+        initialize-schema: true
+server:
+  port: 8080
+renaser:
+  ai:
+    chat:
+      default-model: deepseek-v4-flash
+      # 4096 truncaba el envelope: V4 Pro razona y esos tokens cuentan como salida.
+      max-tokens: 16384
+      max-intentos: 3
+
+supabase:
+  url: https://ikyjurujfxpazygwloja.supabase.co
+  service-role-key: ${SUPABASE_SERVICE_ROLE_KEY:}
