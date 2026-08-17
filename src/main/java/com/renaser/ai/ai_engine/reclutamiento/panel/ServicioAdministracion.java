@@ -32,4 +32,10 @@ public interface ServicioAdministracion {
     void asignarRoles(ContextoUsuario quien, Long usuarioId, List<String> rolesNuevos);
 
     List<RolPanel> roles(ContextoUsuario quien);
+
+    // Las áreas reflejan la estructura de Renaser. Sin un área no se puede registrar
+    // una Solicitud de Talento.
+    List<AreaPanel> areas(ContextoUsuario quien);
+
+    Long crearArea(ContextoUsuario quien, String nombre);
 }

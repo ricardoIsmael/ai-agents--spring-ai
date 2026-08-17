@@ -28,6 +28,7 @@ public class ServicioAdministracionImpl implements ServicioAdministracion {
     private final SolicitudBorradoRepository solicitudesBorrado;
     private final PersonaRepository personas;
     private final UsuarioRepository usuarios;
+    private final AreaRepository areas;
     private final RolRepository roles;
     private final UsuarioRolRepository usuarioRoles;
     private final ConsentimientoRepository consentimientos;
@@ -290,6 +291,27 @@ public class ServicioAdministracionImpl implements ServicioAdministracion {
         return roles.findByOrganizacionIdOrderByCodigo(quien.organizacionId()).stream()
                 .map(r -> new RolPanel(r.getId(), r.getCodigo(), r.getNombre(), r.isEsSistema()))
                 .toList();
+    }
+
+    @Override
+    public List<AreaPanel> areas(ContextoUsuario quien) {
+        return areas.findByOrganizacionIdAndEsActivaTrueOrderByNombre(quien.organizacionId()).stream()
+                .map(a -> new AreaPanel(a.getId(), a.getNombre(), a.isEsActiva()))
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public Long crearArea(ContextoUsuario quien, String nombre) {
+        Area area = areas.save(Area.builder()
+                .organizacionId(quien.organizacionId())
+                .nombre(nombre.trim())
+                .esActiva(true)
+                .creadoEn(Instant.now())
+                .build());
+        auditoria.registrar(quien.organizacionId(), quien, "crear_area",
+                "area", area.getId(), null, Map.of("nombre", nombre.trim()), null);
+        return area.getId();
     }
 
     private void asignarRolesInterno(ContextoUsuario quien, Long usuarioId, List<String> codigos) {

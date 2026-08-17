@@ -108,6 +108,21 @@ public class AdministracionController {
         servicio.asignarRoles(permisos.actual(), id, datos.roles());
     }
 
+    @GetMapping("/areas")
+    @PreAuthorize("@permisos.tiene('ver_solicitudes')")
+    @Operation(summary = "Las áreas activas: hace falta una para registrar una solicitud")
+    public List<AreaPanel> areas() {
+        return servicio.areas(permisos.actual());
+    }
+
+    @PostMapping("/areas")
+    @PreAuthorize("@permisos.tiene('crear_usuarios_y_asignar_roles')")
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = "Crear un área (estructura de la organización: la administra el Administrador)")
+    public Map<String, Long> crearArea(@Valid @RequestBody CrearArea datos) {
+        return Map.of("id", servicio.crearArea(permisos.actual(), datos.nombre()));
+    }
+
     @GetMapping("/roles")
     @PreAuthorize("@permisos.tiene('crear_usuarios_y_asignar_roles')")
     @Operation(summary = "Los roles que existen")

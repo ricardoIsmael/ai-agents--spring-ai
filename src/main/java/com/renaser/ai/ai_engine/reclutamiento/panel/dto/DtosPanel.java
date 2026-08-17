@@ -138,4 +138,8 @@ public final class DtosPanel {
     public record AsignarRoles(@NotNull List<String> roles) {}
 
     public record RolPanel(Long id, String codigo, String nombre, boolean esSistema) {}
+
+    public record CrearArea(@NotBlank String nombre) {}
+
+    public record AreaPanel(Long id, String nombre, boolean esActiva) {}
 }

@@ -114,6 +114,7 @@ la postulación en el acto (`NO_CONTINUA`), con la regla exacta escrita en su hi
 
 | Método y ruta | Qué hace | Permiso |
 |---|---|---|
+| GET `/areas` · POST `/areas` | Las áreas de la organización: hace falta una para registrar una solicitud | `ver_solicitudes` / `crear_usuarios_y_asignar_roles` |
 | GET/PUT `/parametros` | Los valores que Renaser cambia sin programar | `editar_parametros` |
 | GET/POST `/plantillas-correo` | Los textos de correo. Editar = crear versión nueva | `editar_textos_correo` |
 | GET `/auditoria` | El registro, paginado. No se puede modificar ni borrar | `ver_auditoria` |
@@ -127,6 +128,11 @@ la postulación en el acto (`NO_CONTINUA`), con la regla exacta escrita en su hi
 **Los correos no salen todavía.** Cada aviso al candidato queda guardado con su texto exacto en
 la base (`correo_enviado`), pero el envío real espera a que Renaser confirme su dominio de
 correo. Cuando exista, se enchufa el transporte y nada más cambia.
+
+**La prueba del puesto todavía no vive aquí.** Hoy se manda como PDF y se entrega por fuera,
+como se venía haciendo. El sistema solo registra el movimiento del candidato por esa etapa, con
+su motivo. La prueba dentro del sistema —cronómetro en el servidor, cambio a mitad y entregables
+subidos— es el hito 3 (ver «Alcance del MVP»). Lo mismo vale para la simulación y la validación.
 
 **El id público de una postulación es su `uuid`,** no el número interno. Es lo que ve el
 candidato y lo que viaja en sus rutas.
