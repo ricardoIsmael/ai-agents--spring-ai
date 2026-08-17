@@ -1,6 +1,6 @@
 package com.renaser.ai.ai_engine.solicitud.service.impl;
 
-import com.renaser.ai.ai_engine.exception.ResourceNotFoundException;
+import com.renaser.ai.ai_engine.ai.exception.ResourceNotFoundException;
 import com.renaser.ai.ai_engine.auditoria.service.ServicioAuditoria;
 import com.renaser.ai.ai_engine.solicitud.service.ServicioSolicitudes;
 import com.renaser.ai.ai_engine.solicitud.dto.DtosSolicitud.*;

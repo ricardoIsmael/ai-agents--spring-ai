@@ -1,6 +1,6 @@
 package com.renaser.ai.ai_engine.portal.service.impl;
 
-import com.renaser.ai.ai_engine.exception.ResourceNotFoundException;
+import com.renaser.ai.ai_engine.ai.exception.ResourceNotFoundException;
 import com.renaser.ai.ai_engine.archivo.entity.*;
 import com.renaser.ai.ai_engine.archivo.repository.*;
 import com.renaser.ai.ai_engine.archivo.service.*;
