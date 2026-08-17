@@ -1,0 +1,163 @@
+# Documentación · Sistema de selección Renaser
+
+Backend en Java + Spring Boot para el módulo de selección de personal de Renaser Consulting.
+**Va dentro de RENASER OS**: su frontend Next.js ya existe y llama a este backend por su API.
+
+---
+
+## Por dónde empezar
+
+**Lee primero [Qué hace el sistema](00-QUE-HACE-EL-SISTEMA.md).** Son cinco minutos y no tiene
+una sola palabra técnica: qué problema resuelve y qué le pasa a un candidato de principio a fin.
+Sirve también para enseñárselo al cliente.
+
+Después, [Requisitos funcionales](01-REQUISITOS-FUNCIONALES.md) desarrolla cada cosa de ese
+recorrido, y [Alcance del MVP](08-ALCANCE-DEL-MVP.md) dice cuál de ellas se construye primero.
+
+Si vienes de la versión anterior, empieza por
+[Qué cambia con el documento nuevo](insumos/CAMBIOS-DEL-DOCUMENTO-NUEVO.md): el cliente mandó
+requisitos nuevos el 14 de agosto y cambian bastante.
+
+---
+
+## Los documentos
+
+| Documento | Qué contiene |
+|---|---|
+| [00 · Qué hace el sistema](00-QUE-HACE-EL-SISTEMA.md) | El sistema entero sin nada técnico. Cinco minutos |
+| [01 · Requisitos funcionales](01-REQUISITOS-FUNCIONALES.md) | RF-01 a RF-154. Qué hace el sistema |
+| [02 · Requisitos no funcionales](02-REQUISITOS-NO-FUNCIONALES.md) | RNF-01 a RNF-66. Tecnología, seguridad, rendimiento |
+| [03 · Estados de la postulación](03-ESTADOS-POSTULACION.md) | Los 18 estados de una postulación y sus transiciones |
+| [04 · Roles y permisos](04-ROLES-Y-PERMISOS.md) | Los 73 permisos, acción por acción |
+| [05 · Modelo de datos](05-MODELO-DE-DATOS.md) | Las 93 tablas por área y por qué el modelo es así. Se lee |
+| [06 · Inventario de pantallas](06-INVENTARIO-DE-PANTALLAS-MOCKUPS.md) | Las 21 pantallas base, estados, ventanas, campos y datos de los mockups |
+| [07 · Diccionario de datos](07-DICCIONARIO-DE-DATOS.md) | Cada tabla con todas sus columnas, tipos y claves. Se consulta |
+| [08 · Alcance del MVP](08-ALCANCE-DEL-MVP.md) | Qué se construye primero, en tres hitos, y qué queda fuera |
+| [09 · Las APIs](09-APIS.md) | Las dos puertas, cómo entrar y qué hace cada endpoint. La referencia viva es Swagger |
+
+### Diagramas
+
+Archivos HTML que se abren en el navegador:
+
+- [Etapas y pesos](diagramas/embudo-seleccion.html) — los cien puntos repartidos en cuatro etapas,
+  con el ancho de cada bloque igual a su peso
+- [Estados de la postulación](diagramas/estados-postulacion.html) — la rejilla de cinco etapas por
+  cuatro momentos
+- [Modelo de datos](diagramas/modelo-de-datos.html) — el mapa de la base de datos
+
+### Mockups
+
+Prototipos de pantalla. **Los mantiene otra persona**, no se editan desde aquí:
+
+- [Panel de gestión](mockups/renaser-os-reclutamiento.html) — la vista del equipo
+- [Portal del candidato](mockups/portal-candidato.html) — la vista pública
+
+### Insumos
+
+Material de origen. Solo se consulta:
+
+| Archivo | Qué es |
+|---|---|
+| `nuevo_doc_requisitos_funcionales.docx` | **Documento vigente del cliente.** Se declara definitivo y reemplaza a los anteriores |
+| `Sistema_Completo_Talento_RENASER_Seleccion_2026_2029.docx` | Vale para el texto completo de bancos, pruebas y ejemplos que el vigente no reproduce |
+| `Banco_Maestro_Preguntas...docx` | Las preguntas con sus claves y dimensiones |
+| `Sistema_RENASER_Talent_Intelligence...docx` | Versión anterior del vigente. Descartada |
+| `CAMBIOS-DEL-DOCUMENTO-NUEVO.md` | Qué cambió con el documento nuevo y qué se decidió |
+| `ANALISIS-DOCUMENTOS.md` | Qué documento manda sobre cuál y por qué |
+| [`COMPROBACION-SIN-TECNICA.md`](insumos/COMPROBACION-SIN-TECNICA.md) | El sistema en dos páginas sin nada técnico, y las 93 tablas rastreadas contra él. **Su primera parte se lee sola** |
+| `DECISIONES.md` | Decisiones tomadas durante el análisis |
+| `NOTAS-TEMPORALES.md` | Lo que sigue pendiente |
+| `entrevista-cliente-2026-08-08.md` | Transcripción de la reunión |
+| `pruebas-tecnicas/` | **Las cinco pruebas del puesto reales** (ARQ, BIO, CIVIL, CX, SIS), tal como se enviaron a candidatos |
+
+---
+
+## El sistema en corto
+
+Antes de que exista una vacante, alguien registra una **Solicitud de Talento**: qué resultado
+falta y qué pasa si no se contrata. De ahí sale la vacante. Un candidato postula en el portal
+público y atraviesa cinco etapas:
+
+| Etapa | Qué pasa | Quién califica | Peso |
+|---|---|---|---|
+| 1 y 2 · Perfil Integral | Currículum, psicométrico y evaluación, leídos juntos | IA | 40% |
+| 3 · Prueba del puesto | Cronometrada, con un cambio inesperado | IA | 30% |
+| 4 · Simulación de trabajo | Hasta 2 h, con conversación humana al final | Persona | 15% |
+| 5 · Validación práctica | Un periodo de trabajo, con duración configurable | Persona | 15% |
+
+Al final, una decisión: **verde** (contrata), **ámbar** (falta averiguar algo), **rojo** (no
+pasa), **sin datos** (falta evidencia) o **reserva** (no para esta vacante, pero interesa).
+
+---
+
+## Con qué está hecho
+
+| | |
+|---|---|
+| Backend | Java 25 con Spring Boot 4.1 |
+| Base de datos | PostgreSQL propio, con pgvector |
+| Trabajo en segundo plano | RabbitMQ |
+| Inteligencia artificial · conversación | DeepSeek, que es un servicio externo |
+| Inteligencia artificial · búsqueda por significado | Ollama, en el propio servidor |
+| Frontend | Next.js, el de RENASER OS |
+| Identidad del equipo | RENASER OS emite el token; aquí solo se valida |
+
+**Qué sale de Renaser y qué no.** La base de datos, los archivos y la búsqueda por
+significado corren en servidores de Renaser. La parte que conversa con el modelo usa
+DeepSeek, un servicio de fuera.
+
+Hoy **ningún dato de un candidato sale de Renaser**, porque la selección de personal
+todavía no usa esa parte: la inteligencia artificial no lee ni califica a nadie. Eso
+cambia cuando se construya el Perfil Integral (ver [Alcance del MVP](08-ALCANCE-DEL-MVP.md)),
+y entonces hay que decidir una de dos: que esa lectura la haga el modelo del propio
+servidor, o rehacer los textos de consentimiento, que hoy no mencionan a ningún tercero.
+
+---
+
+## Antes de programar
+
+Seis cosas que definen el diseño y conviene tener presentes:
+
+**Los estados mandan.** Ningún estado fuera de la lista del documento 03 puede existir. Cada
+cambio se guarda como un registro aparte que no se modifica ni se borra. Los 18 estados tienen
+forma de rejilla —cinco etapas por cuatro momentos—, así que el siguiente estado se calcula.
+
+**Nadie se descarta solo.** Lo único que cierra una postulación sin intervención humana es un
+requisito objetivo configurado de antemano. Todo lo demás se **ordena** en cuatro grupos de
+prioridad, y una persona confirma, sola o por lote.
+
+**Casi todo es configurable.** Preguntas, pruebas, tiempos, pesos, barreras críticas, roles y
+textos de correo viven en la base de datos, no en el código. El cliente cambia estas cosas
+seguido.
+
+**Nada se recalcula hacia atrás.** Cada candidato queda atado a la versión de preguntas y pesos
+con la que se le evaluó. Su nota nunca cambia sola.
+
+**Los permisos se verifican en el servidor.** Ocultar un botón no es seguridad. Cada llamada a
+la API comprueba quién es el usuario, si puede hacer eso, y que los datos sean de su
+organización.
+
+**Toda entidad de negocio lleva organización.** Hoy solo existe Renaser, pero el aislamiento es
+una regla de seguridad desde la primera versión, no algo que se añada después.
+
+---
+
+## Pendiente del cliente
+
+| Qué falta | Bloquea |
+|---|---|
+| Figura contractual de la validación práctica productiva | Solo esa modalidad. La otra se puede usar ya |
+| Aprobar los textos legales de consentimiento y conservación | Producción, no el desarrollo |
+| Fijar el periodo de conservación de datos | No: es configuración, arranca con un valor |
+| Decir qué familias de trabajo son afines y cuánta vigencia tiene cada componente | No: arranca sin reutilizar nada, que es lo seguro |
+| Decidir si se construye el módulo psicométrico propio | No: su 5% se reparte mientras tanto |
+| Confirmar el catálogo de puestos y sus nombres definitivos | No: hay once plantillas nombradas |
+| Confirmar la máquina de estados, que es propuesta nuestra | No: está construida y es coherente |
+| Qué máquina sostiene el modelo de inteligencia artificial | No en diseño; sí al construir |
+| **Si la IA que lee a un candidato corre en el servidor de Renaser o en un servicio de fuera** | **Sí, al Perfil Integral.** Hoy no bloquea nada porque la IA aún no lee a nadie, pero de esto dependen los textos de consentimiento |
+| **Medir cómo lo hacen hoy**: horas por vacante, postulaciones por vacante y qué tasa de finalización considerarían buena | **Sí, a la medición.** El MVP se puede construir, pero sin línea base no se puede decir si funcionó |
+| **Currículums y pruebas ya corregidos a mano** | **Sí, al paso 0** y a saber si la IA califica igual que una persona |
+
+Las dos últimas son nuevas y salen de [Alcance del MVP](08-ALCANCE-DEL-MVP.md), en «Condiciones
+previas». No bloquean programar, bloquean **saber si el MVP funcionó**, que es justo lo que el
+cliente quiere averiguar.
