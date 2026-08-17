@@ -26,6 +26,8 @@ import com.renaser.ai.ai_engine.postulacion.repository.*;
 import com.renaser.ai.ai_engine.postulacion.service.*;
 import com.renaser.ai.ai_engine.seguridad.config.*;
 import com.renaser.ai.ai_engine.seguridad.dto.*;
+import com.renaser.ai.ai_engine.seguridad.exception.CredencialesInvalidasException;
+import com.renaser.ai.ai_engine.seguridad.exception.DemasiadosIntentosException;
 import com.renaser.ai.ai_engine.seguridad.service.*;
 import com.renaser.ai.ai_engine.vacante.entity.*;
 import com.renaser.ai.ai_engine.vacante.repository.*;
@@ -174,8 +176,9 @@ public class ServicioPortalImpl implements ServicioPortal {
     @Override
     public Sesion entrar(Login datos) {
         Organizacion org = organizacion();
-        if (intentos.estaBloqueado(datos.correo())) {
-            throw new IllegalStateException("Demasiados intentos fallidos. Espera unos minutos y vuelve a probar");
+        long esperaPendiente = intentos.segundosDeBloqueo(datos.correo());
+        if (esperaPendiente > 0) {
+            throw new DemasiadosIntentosException(esperaPendiente);
         }
         int maximo = parametros.entero(org.getId(), "intentos_login_max", 5);
         int minutosBloqueo = parametros.entero(org.getId(), "minutos_bloqueo_login", 15);
@@ -189,7 +192,7 @@ public class ServicioPortalImpl implements ServicioPortal {
         if (usuario == null) {
             intentos.registrarFallo(datos.correo(), maximo, minutosBloqueo);
             // El mismo mensaje exista o no el correo: no se regala información
-            throw new IllegalArgumentException("Correo o contraseña incorrectos");
+            throw new CredencialesInvalidasException("Correo o contraseña incorrectos");
         }
 
         intentos.registrarExito(datos.correo());

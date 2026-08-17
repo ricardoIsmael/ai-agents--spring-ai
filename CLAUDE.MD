@@ -210,3 +210,7 @@ encargo**, y eso lo tiene que reescribir Renaser: sin eso el hito 3 no tiene con
 ## Sistema susceptible a cambios
 El cliente realiza cambios recurrentemente, ya sea en métricas, en datos, en permisos de roles, diseñar el sistema para que admita todo tipo de cambios inesperados, y que todo sea personalizable para el rol de dirección o admin. Que pueda ver y editar todo. 
 
+## Git
+No crees commits poro favor, para poder visualizar los cambios que se realizaron, yo creo commits y los pr. No lo hagas amenos que te lo pida explicitamente
+
+

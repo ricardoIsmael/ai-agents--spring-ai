@@ -2,6 +2,7 @@ package com.renaser.ai.ai_engine.seguridad.service;
 
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -16,10 +17,19 @@ public class IntentosLogin {
 
     private final Map<String, Estado> porCorreo = new ConcurrentHashMap<>();
 
-    public boolean estaBloqueado(String correo) {
+    /**
+     * Segundos que faltan para poder reintentar, o 0 si no está bloqueado.
+     *
+     * <p>Devuelve el tiempo y no un simple sí/no porque la respuesta 429 lleva una cabecera
+     * {@code Retry-After}: sin ella el frontend solo puede adivinar cuándo volver a probar.
+     */
+    public long segundosDeBloqueo(String correo) {
         Estado estado = porCorreo.get(clave(correo));
-        return estado != null && estado.bloqueadoHasta() != null
-                && Instant.now().isBefore(estado.bloqueadoHasta());
+        if (estado == null || estado.bloqueadoHasta() == null) {
+            return 0;
+        }
+        long faltan = Duration.between(Instant.now(), estado.bloqueadoHasta()).toSeconds();
+        return Math.max(faltan, 0);
     }
 
     public void registrarFallo(String correo, int maximo, int minutosBloqueo) {

@@ -31,8 +31,11 @@ aunque llame al mismo endpoint que Talento.
 
 **El candidato:** `POST /portal/cuentas` para crear la cuenta (exige aceptar el tratamiento de
 datos; el consentimiento de futuros contactos es aparte y opcional), y `POST /portal/auth/login`
-con correo y contraseña. Tras varios intentos fallidos seguidos, la entrada se bloquea unos
-minutos (configurable).
+con correo y contraseña. Si no cuadran, responde **401** con el mismo texto tanto si el correo
+no existe como si la contraseña es otra: decir cuál de las dos falló le regalaría a un atacante
+la lista de correos registrados. Tras varios intentos fallidos seguidos (configurable, arranca
+en 5), la entrada se bloquea unos minutos y responde **429** con la cabecera `Retry-After` y el
+campo `segundosDeEspera`, para que la pantalla pueda decir cuánto falta en vez de adivinarlo.
 
 **El equipo, mientras no hay RENASER OS:** `POST /panel/auth/dev-login` con el id de RENASER OS.
 El primer id que entre en una base recién creada se registra solo, con los roles completos del
@@ -47,11 +50,12 @@ en lenguaje normal.
 | Código | Qué significa |
 |---|---|
 | 400 | La petición incumple una regla: «toda transición manual exige un motivo escrito» |
-| 401 | Falta el token o venció |
+| 401 | Falta el token, venció, o el correo y la contraseña no cuadran al entrar |
 | 403 | El token vale, pero ese permiso no lo tienes |
 | 404 | No existe, **o no te toca verlo**: el alcance también responde 404 |
 | 409 | El estado actual no lo permite: «ya postulaste a esta vacante» |
 | 413 | El archivo pasa de 10 MB |
+| 429 | Demasiados intentos de entrar seguidos. Trae `Retry-After` con los segundos que faltan |
 
 ---
 

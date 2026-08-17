@@ -8,13 +8,17 @@ import com.renaser.ai.ai_engine.pesos.controller.PesosController;
 import com.renaser.ai.ai_engine.portal.controller.PortalController;
 import com.renaser.ai.ai_engine.postulacion.controller.PostulacionesPanelController;
 import com.renaser.ai.ai_engine.seguridad.controller.PanelAuthController;
+import com.renaser.ai.ai_engine.seguridad.exception.CredencialesInvalidasException;
+import com.renaser.ai.ai_engine.seguridad.exception.DemasiadosIntentosException;
 import com.renaser.ai.ai_engine.solicitud.controller.SolicitudesController;
 import com.renaser.ai.ai_engine.vacante.controller.VacantesPanelController;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -51,6 +55,29 @@ import java.time.Instant;
 public class ManejadorErrores {
 
     private static final String BASE_URI = "https://api.renaser.com/errors/";
+
+    // Fallar al entrar es 401, no 400: la petición está bien escrita, lo que no cuadra es
+    // la identidad. Se registra sin el correo, que en este caso es dato de un intento fallido.
+    @ExceptionHandler(CredencialesInvalidasException.class)
+    public ProblemDetail credencialesInvalidas(CredencialesInvalidasException ex, WebRequest request) {
+        log.warn("Intento de entrada fallido - Path: {}", request.getDescription(false));
+        return construir(HttpStatus.UNAUTHORIZED, "No se pudo entrar", "credenciales-invalidas",
+                ex.getMessage());
+    }
+
+    // Freno por ritmo, no conflicto de estado: 429 con Retry-After, para que el frontend
+    // sepa cuándo puede volver a probar en vez de adivinar.
+    @ExceptionHandler(DemasiadosIntentosException.class)
+    public ResponseEntity<ProblemDetail> demasiadosIntentos(DemasiadosIntentosException ex,
+                                                            WebRequest request) {
+        log.warn("Entrada bloqueada por intentos fallidos - Path: {}", request.getDescription(false));
+        ProblemDetail problema = construir(HttpStatus.TOO_MANY_REQUESTS, "Demasiados intentos",
+                "demasiados-intentos", ex.getMessage());
+        problema.setProperty("segundosDeEspera", ex.getSegundosDeEspera());
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header(HttpHeaders.RETRY_AFTER, String.valueOf(ex.getSegundosDeEspera()))
+                .body(problema);
+    }
 
     // Una regla de negocio incumplida es un 400 con explicación, no un 500 opaco:
     // «toda transición manual exige motivo», «el archivo debe ser PDF o Word»…

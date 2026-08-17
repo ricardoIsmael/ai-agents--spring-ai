@@ -157,6 +157,38 @@ public class FlujoHito1IT {
                                  "aceptaProceso": true, "aceptaFuturosContactos": true}"""))
                 .andExpect(status().isCreated());
 
+        // Con la contraseña mal es 401, no 400: la petición está bien escrita y lo que
+        // falla es la identidad. Y el mensaje no dice si el correo existe o no.
+        mvc.perform(post("/api/v1/portal/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"correo\":\"camila@ejemplo.pe\",\"contrasena\":\"no-es-esta\"}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.detail").value("Correo o contraseña incorrectos"));
+        mvc.perform(post("/api/v1/portal/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"correo\":\"no-existe@ejemplo.pe\",\"contrasena\":\"Demo12345!\"}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.detail").value("Correo o contraseña incorrectos"));
+
+        // Al insistir, la entrada se bloquea: 429 con Retry-After, no un 409. El tope
+        // sembrado es 5, así que el sexto intento seguido ya cae bloqueado.
+        for (int i = 0; i < 4; i++) {
+            mvc.perform(post("/api/v1/portal/auth/login")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"correo\":\"bloqueo@ejemplo.pe\",\"contrasena\":\"mala\"}"))
+                    .andExpect(status().isUnauthorized());
+        }
+        mvc.perform(post("/api/v1/portal/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"correo\":\"bloqueo@ejemplo.pe\",\"contrasena\":\"mala\"}"))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/v1/portal/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"correo\":\"bloqueo@ejemplo.pe\",\"contrasena\":\"mala\"}"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(header().exists("Retry-After"))
+                .andExpect(jsonPath("$.segundosDeEspera").exists());
+
         tokenCandidato = leer(mvc.perform(post("/api/v1/portal/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"correo\":\"camila@ejemplo.pe\",\"contrasena\":\"Demo12345!\"}"))
