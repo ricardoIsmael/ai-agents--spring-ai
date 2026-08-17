@@ -34,3 +34,9 @@ build/
 
 ### Secrets (nunca commitear) ###
 application-secrets.yaml
+
+### Graphify (cache local, se regenera con `graphify .`) ###
+graphify-out/
+
+### Almacen de archivos subidos en desarrollo local ###
+almacen-archivos/

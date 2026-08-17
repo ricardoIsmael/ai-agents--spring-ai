@@ -49,7 +49,8 @@ spring:
   ai:
     model:
       chat: deepseek
-      embedding: ollama
+      embedding:
+        text: google-genai
 
     deepseek:
       api-key: "${DEEPSEEK_API_KEY:}"
@@ -58,16 +59,21 @@ spring:
           model: ${renaser.ai.chat.default-model}
           max-tokens: ${renaser.ai.chat.max-tokens}
 
-    ollama:
-      base-url: http://localhost:11434
-      embedding:
-        options:
-          model: qwen3-embedding:0.6b
+    # Embeddings en la nube (Gemini Developer API, autenticado con API key, no Vertex).
+    # gemini-embedding-2 normaliza solo los vectores truncados a menos de 3072 dimensiones;
+    # gemini-embedding-001 (el modelo anterior) exige normalizarlos a mano.
+    google:
+      genai:
+        embedding:
+          api-key: ${google.gemini.api-key}
+          text:
+            model: gemini-embedding-2
+            dimensions: 1536
     vectorstore:
       pgvector:
         index-type: HNSW
         distance-type: COSINE_DISTANCE
-        dimensions: 1024
+        dimensions: 1536
         initialize-schema: true
 server:
   port: 8080

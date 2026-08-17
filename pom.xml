@@ -96,12 +96,12 @@
 			<groupId>org.springframework.ai</groupId>
 			<artifactId>spring-ai-starter-model-deepseek</artifactId>
 		</dependency>
-		<!-- Ollama se conserva SOLO por los embeddings: DeepSeek no expone endpoint de
-		     embeddings, y qwen3-embedding:0.6b en CPU no es el cuello de botella que
-		     motivó la migración. El ruteo chat/embedding se define en application.yaml. -->
+		<!-- Embeddings: Gemini (Google GenAI), en la nube. Reemplaza a Ollama local:
+		     DeepSeek no expone endpoint de embeddings, y ya no se quiere depender de un
+		     modelo local. El ruteo chat/embedding se define en application.yaml. -->
 		<dependency>
 			<groupId>org.springframework.ai</groupId>
-			<artifactId>spring-ai-starter-model-ollama</artifactId>
+			<artifactId>spring-ai-starter-model-google-genai-embedding</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.ai</groupId>

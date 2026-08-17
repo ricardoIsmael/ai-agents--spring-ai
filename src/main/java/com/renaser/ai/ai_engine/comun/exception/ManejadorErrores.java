@@ -1,6 +1,10 @@
 package com.renaser.ai.ai_engine.comun.exception;
 
 import com.renaser.ai.ai_engine.administracion.controller.AdministracionController;
+import com.renaser.ai.ai_engine.ai.controller.perfilintegral.AgentesIaPanelController;
+import com.renaser.ai.ai_engine.perfilintegral.controller.BancoPreguntasController;
+import com.renaser.ai.ai_engine.perfilintegral.controller.PlantillasEvaluacionController;
+import com.renaser.ai.ai_engine.pesos.controller.PesosController;
 import com.renaser.ai.ai_engine.portal.controller.PortalController;
 import com.renaser.ai.ai_engine.postulacion.controller.PostulacionesPanelController;
 import com.renaser.ai.ai_engine.seguridad.controller.PanelAuthController;
@@ -37,7 +41,11 @@ import java.time.Instant;
         SolicitudesController.class,
         VacantesPanelController.class,
         PostulacionesPanelController.class,
-        PanelAuthController.class})
+        PanelAuthController.class,
+        BancoPreguntasController.class,
+        PlantillasEvaluacionController.class,
+        PesosController.class,
+        AgentesIaPanelController.class})
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @Slf4j
 public class ManejadorErrores {

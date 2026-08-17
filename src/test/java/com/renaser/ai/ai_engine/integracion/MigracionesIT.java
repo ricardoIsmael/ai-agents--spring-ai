@@ -5,9 +5,11 @@ import com.renaser.ai.ai_engine.postulacion.repository.EstadoPostulacionReposito
 import com.renaser.ai.ai_engine.organizacion.repository.OrganizacionRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.TestPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -17,10 +19,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-// Prueba las migraciones donde van a correr: un Postgres real y efímero. Flyway migra
-// desde cero y Hibernate valida que cada entidad coincida con lo que las migraciones
-// crearon. Si un tipo o una columna no cuadra, este test no arranca.
-@DataJpaTest
+@SpringBootTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers
 @TestPropertySource(properties = {
@@ -33,6 +32,13 @@ public class MigracionesIT {
     @ServiceConnection
     // La misma imagen que producción: pgvector/pg16, no un Postgres pelado
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("pgvector/pgvector:pg16");
+
+    @DynamicPropertySource
+    static void propiedades(DynamicPropertyRegistry registro) {
+        registro.add("app.seguridad.jwt-secreto",
+                () -> "clave-de-pruebas-suficientemente-larga-para-hmac-256-bits");
+        registro.add("spring.ai.deepseek.api-key", () -> "clave-de-pruebas-no-se-usa");
+    }
 
     @Autowired
     private EstadoPostulacionRepository estados;
