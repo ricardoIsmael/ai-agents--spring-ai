@@ -21,11 +21,18 @@ el sistema (reclutamiento y agentes de IA juntos).
 | Spring Boot | 4.1 |
 | Base de datos | PostgreSQL propio con pgvector, en `docker-compose.yml`, puerto 5433 |
 | Cola | RabbitMQ, para calificar en segundo plano |
-| IA | Spring AI con **Ollama**, corriendo en el propio servidor |
+| IA · chat | Spring AI con **DeepSeek**, que es una API externa. Exige `DEEPSEEK_API_KEY`: sin ella la aplicacion **no arranca** |
+| IA · embeddings | **Ollama**, local, en el propio servidor |
 | Otros | MapStruct, Lombok, hilos virtuales |
 
-Todo corre en servidores de Renaser: los datos de candidatos no salen a terceros.
 Flyway, Security, JWT, Validation y Swagger ya estan en el `pom.xml` y compilan.
+
+**Donde salen los datos, hoy.** El chat va a la API de DeepSeek; los embeddings se quedan
+en Ollama, en la maquina. Hoy **ningun dato de candidato sale**, porque el modulo de
+seleccion no llama al modelo de chat: la IA todavia no lee ni califica a nadie.
+⚠️ **Eso cambia en el hito 2**, cuando la IA arme el Perfil Integral. Ahi hay que decidir si
+ese chat va por Ollama local o si se rehacen los textos de consentimiento, que hoy no
+mencionan ningun tercero.
 
 ## RENASER OS
 Es un proyecto avanzado y este backend es un modulo suyo. Son **dos servicios separados que
@@ -40,14 +47,14 @@ hablan por HTTP**: no comparten base de datos, asi que no hay claves foraneas co
 | Tareas, tiempos, bloqueos, retrabajo | Se leen de su API. Alimentan las metricas de la validacion |
 | Objetivos y resultados del personal | Se leen de su API. Es la fuente del seguimiento 30/90/180 |
 
-## Donde estamos (15/08/2026, tarde)
+## Donde estamos (17/08/2026)
 **El hito 1 esta implementado y probado. Los hitos 2 y 3, no.**
 
 | | |
 |---|---|
-| Base de datos | **Flyway es el dueno del esquema**: V1-V9 en `src/main/resources/db/migration` crean las 34 tablas del hito 1 con semillas. `ddl-auto: validate` |
-| Codigo | Paquete `reclutamiento/` con seguridad (dos puertas + permisos con alcance), maquina de estados, portal y panel completos del hito 1 |
-| Tests | 12 en verde: unitario de la maquina, migraciones contra Postgres real (Testcontainers) y el flujo entero de punta a punta (`FlujoHito1IT`) |
+| Base de datos | **Flyway es el dueno del esquema**: V1-V9 en `src/main/resources/db/migration` crean las 34 tablas del hito 1 con semillas. `ddl-auto: validate`, que gobierna tambien la tabla `agent_run` del modulo de agentes |
+| Codigo | Quince paquetes de dominio bajo `ai_engine` (ver «Como esta organizado el codigo»): seguridad con dos puertas y permisos con alcance, maquina de estados, portal y panel completos del hito 1 |
+| Tests | 20 en verde (12 de seleccion + 8 de agentes): unitario de la maquina, migraciones contra Postgres real (Testcontainers) y el flujo entero de punta a punta (`FlujoHito1IT`) |
 | Correo | Se registra en `correo_enviado` pero NO se envia: falta el dominio de Renaser (`EnviadorCorreoLog`) |
 | Identidad equipo | `dev-login` de desarrollo; el contrato de RENASER OS no existe aun (`ProveedorIdentidadEquipo`) |
 | Mockups | Los mantiene otra persona y **describen la version anterior** |
@@ -56,6 +63,48 @@ Reglas al tocar el codigo del hito 1: toda transicion pasa por `MaquinaEstados.t
 (nunca tocar `postulacion.estado_codigo` a mano); el alcance se aplica en queries via
 `Permisos.alcanceDe`; el esquema solo cambia con una migracion nueva (nunca editar una aplicada).
 Los hitos 2 y 3 estan definidos en el [documento 08](docs/08-ALCANCE-DEL-MVP.md).
+
+## Como esta organizado el codigo
+Un solo proyecto para dos cosas: el modulo de seleccion de personal y el motor de agentes de
+IA. **Los mantienen dos personas distintas**, asi que no comparten paquetes.
+
+**El motor de agentes** (lo lleva Ricardo) vive en los paquetes clasicos por capa:
+`config`, `controller`, `service`, `repository`, `dto`, `model`, `mapper`, `exception`,
+`context`, `flow`, `messaging`, `prompt`, `rag`, `supabase`. **No tocarlos.**
+
+**La seleccion de personal** vive en un paquete por dominio, cada uno con sus capas dentro:
+
+```
+com.renaser.ai.ai_engine.<dominio>
+├── controller/    los endpoints
+├── service/       la interfaz, y la clase en impl/
+├── repository/    los repositorios de Spring Data
+├── entity/        las entidades JPA
+└── dto/           los contratos de entrada y salida
+```
+
+| Dominio | Que guarda |
+|---|---|
+| `usuario` | Persona, usuario del equipo, roles y permisos |
+| `organizacion` | La organizacion y sus areas |
+| `solicitud` | La Solicitud de Talento y sus resultados esperados |
+| `vacante` | Vacante, puesto, catalogos y requisitos objetivos |
+| `postulacion` | La postulacion, su historial, el CV y **la maquina de estados** |
+| `pesos` | Las versiones de pesos del embudo |
+| `consentimiento` | Textos legales, consentimientos y solicitudes de borrado |
+| `notificacion` | Plantillas y registro de correos |
+| `archivo` | El almacen de archivos en disco |
+| `auditoria` | El registro inmutable de quien hizo que |
+| `parametro` | Los valores que Renaser cambia sin programar |
+| `portal` | La cara del candidato: un controlador y un servicio para todo el recorrido publico |
+| `administracion` | La cara de configuracion del panel |
+| `seguridad` | Las dos puertas, tokens, contexto y permisos con alcance |
+| `comun` | El manejador de errores propio y el candado de Swagger |
+
+Dos clases marcan la frontera con el motor de agentes y **hay que actualizarlas al anadir un
+controlador nuevo**, porque enumeran los nuestros: `comun/exception/ManejadorErrores` (para que
+sus errores no salgan como 500) y `comun/config/ConfiguracionSwagger` (para que sus endpoints
+salgan con candado). Esta escrito en el javadoc de ambas.
 
 ## Documentos del proyecto
 Todo vive en `docs/`. Empezar por [docs/README.md](docs/README.md).

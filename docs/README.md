@@ -97,12 +97,20 @@ pasa), **sin datos** (falta evidencia) o **reserva** (no para esta vacante, pero
 | Backend | Java 25 con Spring Boot 4.1 |
 | Base de datos | PostgreSQL propio, con pgvector |
 | Trabajo en segundo plano | RabbitMQ |
-| Inteligencia artificial | Ollama, en el propio servidor |
+| Inteligencia artificial · conversación | DeepSeek, que es un servicio externo |
+| Inteligencia artificial · búsqueda por significado | Ollama, en el propio servidor |
 | Frontend | Next.js, el de RENASER OS |
 | Identidad del equipo | RENASER OS emite el token; aquí solo se valida |
 
-Todo corre en servidores de Renaser. Los datos de los candidatos no salen a servicios de
-terceros, y el modelo de inteligencia artificial tampoco.
+**Qué sale de Renaser y qué no.** La base de datos, los archivos y la búsqueda por
+significado corren en servidores de Renaser. La parte que conversa con el modelo usa
+DeepSeek, un servicio de fuera.
+
+Hoy **ningún dato de un candidato sale de Renaser**, porque la selección de personal
+todavía no usa esa parte: la inteligencia artificial no lee ni califica a nadie. Eso
+cambia cuando se construya el Perfil Integral (ver [Alcance del MVP](08-ALCANCE-DEL-MVP.md)),
+y entonces hay que decidir una de dos: que esa lectura la haga el modelo del propio
+servidor, o rehacer los textos de consentimiento, que hoy no mencionan a ningún tercero.
 
 ---
 
@@ -146,6 +154,7 @@ una regla de seguridad desde la primera versión, no algo que se añada después
 | Confirmar el catálogo de puestos y sus nombres definitivos | No: hay once plantillas nombradas |
 | Confirmar la máquina de estados, que es propuesta nuestra | No: está construida y es coherente |
 | Qué máquina sostiene el modelo de inteligencia artificial | No en diseño; sí al construir |
+| **Si la IA que lee a un candidato corre en el servidor de Renaser o en un servicio de fuera** | **Sí, al Perfil Integral.** Hoy no bloquea nada porque la IA aún no lee a nadie, pero de esto dependen los textos de consentimiento |
 | **Medir cómo lo hacen hoy**: horas por vacante, postulaciones por vacante y qué tasa de finalización considerarían buena | **Sí, a la medición.** El MVP se puede construir, pero sin línea base no se puede decir si funcionó |
 | **Currículums y pruebas ya corregidos a mano** | **Sí, al paso 0** y a saber si la IA califica igual que una persona |
 

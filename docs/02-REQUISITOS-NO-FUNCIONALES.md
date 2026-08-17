@@ -54,13 +54,19 @@ Se deja en una cola y se atiende aparte. Por eso hay una cola en el dibujo.
 | Archivos | Almacén propio, fuera de la base de datos |
 | Cola de trabajo en segundo plano | RabbitMQ |
 | Comunicación con el frontend | API REST con JSON |
-| Modelo de inteligencia artificial | **Ollama**, corriendo en el propio servidor |
+| Modelo que busca por significado | **Ollama**, corriendo en el propio servidor |
+| Modelo que conversa | **DeepSeek**, un servicio de fuera. Lo usa hoy el motor de agentes, no la selección |
 | Correo | Desde el dominio propio de Renaser |
 
-El modelo de inteligencia artificial corre **dentro del servidor de Renaser**, no en un
-servicio de otra empresa. Eso resuelve de entrada el problema legal más incómodo: los datos
-de los candidatos no salen a ninguna parte. También quita el gasto por consulta, y a cambio
-exige una máquina que aguante el trabajo.
+La parte que busca por significado corre **dentro del servidor de Renaser**. La parte que
+conversa con un modelo grande usa DeepSeek, que es de otra empresa, y hoy solo la usa el
+motor de agentes: **la selección de personal no llama a ningún modelo todavía**, así que
+ningún dato de un candidato sale de Renaser.
+
+⚠️ **Eso deja una decisión abierta**, y hay que cerrarla antes de que la IA lea a un
+candidato: o esa lectura la hace el modelo del propio servidor —que es lo que se prometió y
+lo que evita el problema legal— o se rehacen los textos de consentimiento para nombrar al
+tercero. Un modelo local no cuesta por consulta pero exige una máquina que aguante.
 
 ### Cuánta gente lo va a usar
 
@@ -129,9 +135,13 @@ corta duración que genera el backend cuando alguien abre el archivo.
 *Por qué:* un CV contiene nombre, teléfono e historial laboral. Un almacén público lo expone
 a cualquiera que tenga el enlace.
 
-**RNF-10** Todo se aloja en **servidores propios de Renaser**, en Perú si es posible. Los
-datos de los candidatos no salen a servicios de terceros, y el modelo de inteligencia
-artificial corre en la misma máquina.
+**RNF-10** Todo se aloja en **servidores propios de Renaser**, en Perú si es posible: la base
+de datos, los archivos y el modelo que busca por significado. Los datos de los candidatos no
+salen a servicios de terceros.
+
+El sistema convive con un motor de agentes que sí usa un modelo de fuera (DeepSeek) para
+conversar, pero la selección de personal no lo llama. **Mantener separadas esas dos cosas es
+parte del requisito**, no un detalle de implementación.
 
 ---
 
@@ -183,7 +193,8 @@ regla se cumplió.
 
 **RNF-18** Los datos de un candidato **no salen de Renaser** ni se le mete en un proceso al
 que no postuló. Nadie ajeno a la empresa los ve, y nadie aparece como candidato de una
-vacante sin haberse postulado a ella.
+vacante sin haberse postulado a ella. Esto incluye no mandarlos a un modelo de otra empresa:
+ver «Inteligencia artificial», donde queda anotado que esa elección está abierta.
 
 Distinto es lo que pasa **dentro de sus propias postulaciones**: parte de lo que ya respondió
 puede reutilizarse para no hacérselo repetir. Eso es una comodidad para él, no un uso de sus
@@ -254,12 +265,18 @@ que el propio modelo dio con dudas.
 
 # 5. Inteligencia artificial
 
-**RNF-33** El modelo es **Ollama corriendo en el propio servidor**. Aun así, la lógica de
-evaluación no depende de él: cambiar de modelo, o pasar a uno de pago, no obliga a
-reescribirla.
+**RNF-33** El modelo que califica a un candidato corre **en el propio servidor** (Ollama). La
+lógica de evaluación no depende de cuál sea: cambiar de modelo, o pasar a uno de pago, no
+obliga a reescribirla.
 *Por qué:* que el modelo sea local es lo que permite prometerle al candidato que sus datos no
 salen de Renaser. Y que sea intercambiable es lo que permite mejorar la calidad si el modelo
 local se queda corto calificando.
+
+⚠️ **Hoy esto no está probado en código, porque la IA todavía no califica a nadie.** El
+proyecto tiene configurado DeepSeek —un servicio de fuera— para el motor de agentes, y al
+construir el Perfil Integral hay que elegir explícitamente: o el modelo local, cumpliendo este
+requisito, o DeepSeek, y entonces este requisito y los textos de consentimiento cambian. **No
+es una decisión que se pueda dejar al descuido de la configuración.**
 
 **RNF-34** Los textos de instrucción que se envían a la IA se administran como configuración,
 con versiones, y se pueden cambiar sin volver a desplegar el sistema.
