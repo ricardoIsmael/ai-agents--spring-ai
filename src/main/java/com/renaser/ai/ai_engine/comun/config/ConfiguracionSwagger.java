@@ -1,0 +1,75 @@
+package com.renaser.ai.ai_engine.comun.config;
+
+import com.renaser.ai.ai_engine.administracion.controller.AdministracionController;
+import com.renaser.ai.ai_engine.portal.controller.PortalController;
+import com.renaser.ai.ai_engine.postulacion.controller.PostulacionesPanelController;
+import com.renaser.ai.ai_engine.seguridad.controller.PanelAuthController;
+import com.renaser.ai.ai_engine.solicitud.controller.SolicitudesController;
+import com.renaser.ai.ai_engine.vacante.controller.VacantesPanelController;
+import io.swagger.v3.oas.models.Components;
+import io.swagger.v3.oas.models.security.SecurityRequirement;
+import io.swagger.v3.oas.models.security.SecurityScheme;
+import org.springdoc.core.customizers.OpenApiCustomizer;
+import org.springdoc.core.customizers.OperationCustomizer;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+/**
+ * El candado de Swagger para el portal y el panel.
+ *
+ * <p>No toca el bean {@code OpenAPI} del módulo de agentes: lo completa desde fuera. Así el
+ * botón «Authorize» aparece sin que haya que editar un archivo compartido, y el candado se
+ * pone solo en nuestros endpoints, no en los de agentes, que hoy van abiertos.
+ *
+ * <p>Los controladores se listan por clase, no por nombre de paquete, para que un cambio de
+ * nombre no deje la lista apuntando al vacío. <b>Al añadir un controlador nuevo hay que sumarlo
+ * aquí</b>, o sus endpoints saldrán en Swagger sin candado.
+ */
+@Configuration
+public class ConfiguracionSwagger {
+
+    private static final String ESQUEMA = "bearer";
+
+    private static final List<Class<?>> CONTROLADORES = List.of(
+            PortalController.class,
+            AdministracionController.class,
+            SolicitudesController.class,
+            VacantesPanelController.class,
+            PostulacionesPanelController.class,
+            PanelAuthController.class);
+
+    private static final Set<String> PAQUETES = CONTROLADORES.stream()
+            .map(c -> c.getPackage().getName())
+            .collect(Collectors.toUnmodifiableSet());
+
+    // Sin esto no hay dónde pegar el token y los endpoints no se pueden probar desde Swagger
+    @Bean
+    public OpenApiCustomizer esquemaBearerSeleccion() {
+        return openApi -> {
+            if (openApi.getComponents() == null) {
+                openApi.setComponents(new Components());
+            }
+            openApi.getComponents().addSecuritySchemes(ESQUEMA, new SecurityScheme()
+                    .type(SecurityScheme.Type.HTTP)
+                    .scheme("bearer")
+                    .bearerFormat("JWT")
+                    .description("El token que devuelve /portal/auth/login (candidato) "
+                            + "o /panel/auth/dev-login (equipo)"));
+        };
+    }
+
+    // El candado solo en nuestras operaciones: las de agentes no piden token todavía
+    @Bean
+    public OperationCustomizer candadoSoloEnSeleccion() {
+        return (operacion, metodo) -> {
+            if (PAQUETES.contains(metodo.getBeanType().getPackageName())) {
+                operacion.addSecurityItem(new SecurityRequirement().addList(ESQUEMA));
+            }
+            return operacion;
+        };
+    }
+}
