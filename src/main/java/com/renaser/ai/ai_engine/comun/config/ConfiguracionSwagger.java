@@ -62,11 +62,14 @@ public class ConfiguracionSwagger {
         };
     }
 
-    // El candado solo en nuestras operaciones: las de agentes no piden token todavía
+    // El candado solo en nuestras operaciones: las de agentes no piden token todavía.
+    // Cuenta también lo que esté en un subpaquete, para que esto abarque lo mismo que el
+    // basePackageClasses de ManejadorErrores y no queden dos fronteras distintas.
     @Bean
     public OperationCustomizer candadoSoloEnSeleccion() {
         return (operacion, metodo) -> {
-            if (PAQUETES.contains(metodo.getBeanType().getPackageName())) {
+            String paquete = metodo.getBeanType().getPackageName();
+            if (PAQUETES.stream().anyMatch(p -> paquete.equals(p) || paquete.startsWith(p + "."))) {
                 operacion.addSecurityItem(new SecurityRequirement().addList(ESQUEMA));
             }
             return operacion;
