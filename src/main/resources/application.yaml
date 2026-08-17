@@ -30,6 +30,10 @@ spring:
   # El esquema vive en src/main/resources/db/migration, versionado. Nadie toca tablas a mano.
   flyway:
     enabled: true
+    # La BD local ya tenía agent_run antes de adoptar Flyway en V1.
+    # Flyway registra V1 como base y ejecuta V2 a V9 en el primer arranque.
+    baseline-on-migrate: true
+    baseline-version: 1
 
   # El CV pesa hasta 10 MB (regla del portal). El request completo un poco más, por el multipart.
   servlet:
