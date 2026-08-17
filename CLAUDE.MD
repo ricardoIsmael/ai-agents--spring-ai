@@ -68,9 +68,13 @@ Los hitos 2 y 3 estan definidos en el [documento 08](docs/08-ALCANCE-DEL-MVP.md)
 Un solo proyecto para dos cosas: el modulo de seleccion de personal y el motor de agentes de
 IA. **Los mantienen dos personas distintas**, asi que no comparten paquetes.
 
-**El motor de agentes** (lo lleva Ricardo) vive en los paquetes clasicos por capa:
-`config`, `controller`, `service`, `repository`, `dto`, `model`, `mapper`, `exception`,
-`context`, `flow`, `messaging`, `prompt`, `rag`, `supabase`. **No tocarlos.**
+**El motor de agentes** (lo lleva Ricardo) vive entero bajo `ai_engine/ai/`, organizado por
+capa: `config`, `controller`, `service`, `repository`, `dto`, `model`, `mapper`, `exception`,
+`context`, `flow`, `messaging`, `prompt`, `rag`, `supabase`. **No tocar nada de ahi dentro.**
+
+Nuestro codigo usa una sola clase suya, `ai/exception/ResourceNotFoundException`, en cinco
+servicios. Es la unica dependencia que cruza la frontera, y conviene saberlo: si el la mueve
+otra vez, esos cinco imports se rompen.
 
 **La seleccion de personal** vive en un paquete por dominio, cada uno con sus capas dentro:
 
