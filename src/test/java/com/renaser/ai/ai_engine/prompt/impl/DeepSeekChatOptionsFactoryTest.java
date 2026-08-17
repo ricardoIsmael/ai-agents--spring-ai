@@ -44,8 +44,8 @@ class DeepSeekChatOptionsFactoryTest {
 
     @Test
     void respetaElModeloQueResuelveElSelectorPorAgente() {
-        // El override por agente es el mecanismo para abaratar agentes moviéndolos a
-        // deepseek-v4-flash. Si la factory ignorara al selector, poblar LIGHT_MODEL_OVERRIDES
+        // El override por agente es el mecanismo que mantiene a ORCHESTRATOR en
+        // deepseek-v4-pro. Si la factory ignorara al selector, poblar MODEL_OVERRIDES
         // no tendría ningún efecto y el ahorro sería silenciosamente cero.
         AgentModelSelector selector = agentType ->
                 agentType == AgentType.NARRATIVE_MESSAGE ? "deepseek-v4-flash" : "deepseek-v4-pro";

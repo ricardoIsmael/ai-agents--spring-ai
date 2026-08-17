@@ -58,7 +58,7 @@ server:
 renaser:
   ai:
     chat:
-      default-model: deepseek-v4-pro
+      default-model: deepseek-v4-flash
       # 4096 truncaba el envelope: V4 Pro razona y esos tokens cuentan como salida.
       max-tokens: 16384
       max-intentos: 3
