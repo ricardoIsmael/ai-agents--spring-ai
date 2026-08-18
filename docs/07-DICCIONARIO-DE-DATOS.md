@@ -1901,7 +1901,7 @@ Cada intento por separado.
 | `version_agente` | integer | sí | |
 | `objetivo` | text | sí | Qué se le pidió |
 | `modelo` | text | sí | |
-| `proveedor` | text | sí | `OLLAMA` hoy |
+| `proveedor` | text | sí | `DEEPSEEK` para calificar, `GOOGLE` para buscar por significado |
 | `version_modelo` | text | no | Cuando el proveedor la da |
 | `instruccion_ia_id` | bigint | no | |
 | `envio` | text | sí | Lo que se le mandó, entero |

@@ -33,6 +33,8 @@
 		<!-- springdoc 3.x es la linea para Spring Boot 4. La 2.x es de Boot 3 y no arranca aqui -->
 		<springdoc.version>3.1.0</springdoc.version>
 		<testcontainers.version>2.0.5</testcontainers.version>
+		<!-- La misma que ya traia spring-ai-pdf-document-reader: no baja nada nuevo -->
+		<pdfbox.version>3.0.7</pdfbox.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -114,6 +116,15 @@
 		<dependency>
 			<groupId>org.springframework.ai</groupId>
 			<artifactId>spring-ai-pdf-document-reader</artifactId>
+		</dependency>
+		<!-- Saca el texto del curriculum en PDF: sin eso la IA no tiene que leer (RF-41).
+		     Ya venia dentro de spring-ai-pdf-document-reader; se declara aparte para que
+		     nuestro codigo no dependa de una transitiva que manda otra libreria. Los .docx
+		     se leen sin libreria (ver ExtractorTextoCv), asi que Apache POI no hace falta. -->
+		<dependency>
+			<groupId>org.apache.pdfbox</groupId>
+			<artifactId>pdfbox</artifactId>
+			<version>${pdfbox.version}</version>
 		</dependency>
 
 		<dependency>

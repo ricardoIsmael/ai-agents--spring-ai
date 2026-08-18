@@ -53,6 +53,14 @@ spring:
         text: google-genai
 
     deepseek:
+      # ⚠️ La clave de verdad NO está aquí: está en application-secrets.yaml, que se importa
+      # arriba (spring.config.import) y que no se versiona. Lo importado gana sobre este
+      # archivo, así que este valor solo se usa si ese archivo no existe, y entonces cae en
+      # la variable de entorno DEEPSEEK_API_KEY o, si tampoco está, en vacío.
+      #
+      # Vacío no da un error claro: da un 401 del proveedor a la primera calificación. Por
+      # eso CalificacionIaRealIT comprueba que la clave se resuelva antes de nada — si un día
+      # alguien cambia el orden de precedencia sin querer, salta ahí y no en producción.
       api-key: "${DEEPSEEK_API_KEY:}"
       chat:
         options:
@@ -84,6 +92,17 @@ renaser:
       # 4096 truncaba el envelope: V4 Pro razona y esos tokens cuentan como salida.
       max-tokens: 16384
       max-intentos: 3
+    # Los tres agentes que califican una postulación del hito 2 de selección
+    calificacion:
+      # Apagarla deja la postulación en PERFIL_CALIFICANDO sin encolar nada. Se usa en las
+      # pruebas que no quieren tocar el modelo, y sirve de freno si el proveedor está caído.
+      habilitada: true
+      # Cuántas veces se reintenta un trabajo antes de darlo por fallido. Fallido NO significa
+      # nota cero: significa que la postulación se queda esperando y hay que mirarla.
+      max-intentos: 3
+      # A partir de cuántos minutos un trabajo se considera colgado y se vuelve a encolar
+      minutos-colgado: 15
+      periodo-sondeo-ms: 300000
 
 supabase:
   url: https://ikyjurujfxpazygwloja.supabase.co

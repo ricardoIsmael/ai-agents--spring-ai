@@ -24,6 +24,14 @@ public class RabbitMQConfig {
     public static final String AGENT_EXECUTION_QUEUE = "agent.execution.queue";
     public static final String AGENT_EXECUTION_ROUTING_KEY = "agent.execute";
 
+    // La cola del hito 2 de selección: los tres agentes que califican una postulación.
+    // Va aparte de agent.execution.queue a propósito. Son mecanismos distintos: aquélla
+    // ejecuta los agentes genéricos de RENASER OS con su envelope común, y ésta atiende
+    // filas de trabajo_ia, que se reintentan por su cuenta y escriben sobre las tablas de
+    // selección. Compartir cola mezclaría dos formatos de mensaje en el mismo consumidor.
+    public static final String SELECCION_CALIFICACION_QUEUE = "seleccion.calificacion.queue";
+    public static final String SELECCION_CALIFICACION_ROUTING_KEY = "seleccion.calificar";
+
     // Destino de los mensajes que no se pudieron procesar. Nada se pierde en silencio:
     // queda aquí para inspección en vez de reintentarse indefinidamente.
     public static final String AGENT_DLX = "agent.dlx";
@@ -87,6 +95,18 @@ public class RabbitMQConfig {
     @Bean
     public Binding agentExecutionBinding(Queue agentExecutionQueue, TopicExchange agentExchange) {
         return BindingBuilder.bind(agentExecutionQueue).to(agentExchange).with(AGENT_EXECUTION_ROUTING_KEY);
+    }
+
+    @Bean
+    public Queue seleccionCalificacionQueue() {
+        return protectedQueue(SELECCION_CALIFICACION_QUEUE);
+    }
+
+    @Bean
+    public Binding seleccionCalificacionBinding(Queue seleccionCalificacionQueue,
+                                                TopicExchange agentExchange) {
+        return BindingBuilder.bind(seleccionCalificacionQueue).to(agentExchange)
+                .with(SELECCION_CALIFICACION_ROUTING_KEY);
     }
 
     /**

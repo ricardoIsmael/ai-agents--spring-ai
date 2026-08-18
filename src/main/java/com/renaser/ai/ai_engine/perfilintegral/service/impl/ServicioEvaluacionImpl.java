@@ -1,6 +1,7 @@
 package com.renaser.ai.ai_engine.perfilintegral.service.impl;
 
 import com.renaser.ai.ai_engine.ai.exception.ResourceNotFoundException;
+import com.renaser.ai.ai_engine.ai.service.ColaCalificacionIa;
 import com.renaser.ai.ai_engine.perfilintegral.dto.DtosEvaluacion.EntregaResponse;
 import com.renaser.ai.ai_engine.perfilintegral.dto.DtosEvaluacion.EvaluacionCandidato;
 import com.renaser.ai.ai_engine.perfilintegral.dto.DtosEvaluacion.OpcionCandidato;
@@ -78,6 +79,7 @@ public class ServicioEvaluacionImpl implements ServicioEvaluacion {
     private final PostulacionRepository postulaciones;
     private final MaquinaEstados maquina;
     private final ServicioCalificacion calificacion;
+    private final ColaCalificacionIa colaIa;
 
     private final SecureRandom azar = new SecureRandom();
 
@@ -197,10 +199,15 @@ public class ServicioEvaluacionImpl implements ServicioEvaluacion {
         maquina.transicionar(postulacion, "PERFIL_CALIFICANDO", null, null, true, false, null);
 
         // Lo cerrado se puntúa aquí mismo: es aritmética contra una clave, tarda milisegundos
-        // y no depende de que ningún modelo responda. Lo que sí necesita IA —el currículum,
-        // las respuestas abiertas y el Perfil de Talento— queda pendiente, y por eso la
-        // postulación se queda en PERFIL_CALIFICANDO hasta que alguien la mueva.
+        // y no depende de que ningún modelo responda.
         calificacion.calificarLoCerrado(postulacion.getId());
+
+        // Lo que sí necesita IA —el currículum, las respuestas abiertas y el Perfil de
+        // Talento— se hace en segundo plano: tarda decenas de segundos y depende de un
+        // servicio externo, así que no puede colgarse de la petición del candidato. La
+        // postulación se queda en PERFIL_CALIFICANDO hasta que haya resultado, y si la IA
+        // falla se reintenta sola: nunca se inventa una nota (Regla 3 del doc 03).
+        colaIa.encolarPerfilIntegral(postulacion.getId());
 
         return new EntregaResponse("TERMINADA", respondidas, total);
     }

@@ -148,8 +148,11 @@ Es la forma más rápida de ver el sistema funcionando sin abrir el navegador.
 
 ## Etapa 11 · El motor de agentes
 
-`ai/`, 113 clases. **No se toca**, pero comparte proceso y base de datos. Entrada:
+`ai/`, 113 clases. **No se toca**, pero comparte proceso, base de datos y puerto. Entrada:
 `FlowController` → `AgentExecutionServiceImpl` → los prompts en `resources/prompts/`.
+
+Dentro viven los 15 agentes y su respuesta estructurada, el encadenamiento por RabbitMQ con
+`routing[]` y tope de profundidad, y el RAG con pgvector más los embeddings de Google Gemini.
 
 ---
 

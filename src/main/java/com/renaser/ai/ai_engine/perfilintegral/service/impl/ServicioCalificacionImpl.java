@@ -83,10 +83,34 @@ public class ServicioCalificacionImpl implements ServicioCalificacion {
                 .findByIdIn(suyas.stream().map(Respuesta::getPreguntaId).toList()).stream()
                 .collect(Collectors.toMap(Pregunta::getId, Function.identity()));
 
-        BigDecimal nota = puntuar(suyas, porId);
+        ResumenCerrado resumen = puntuar(suyas, porId);
         detectarContradicciones(postulacion, evaluacion, suyas, porId);
-        guardarNota(postulacion, nota);
-        return nota;
+        guardarNota(postulacion, resumen.nota());
+        return resumen.nota();
+    }
+
+    /**
+     * La misma cuenta, sin guardar nada.
+     *
+     * <p>Existe para que el Perfil de Talento no tenga que reimplementar la aritmética de la
+     * clave: si hubiera dos copias, un día darían resultados distintos y nadie sabría cuál
+     * es la buena.
+     */
+    @Override
+    public ResumenCerrado resumenDeLoCerrado(Long postulacionId) {
+        Postulacion postulacion = postulaciones.findById(postulacionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Postulación", "id", postulacionId));
+        if (postulacion.getEvaluacionId() == null) {
+            return new ResumenCerrado(BigDecimal.ZERO, 0);
+        }
+        List<Respuesta> suyas = respuestas.findByEvaluacionId(postulacion.getEvaluacionId());
+        if (suyas.isEmpty()) {
+            return new ResumenCerrado(BigDecimal.ZERO, 0);
+        }
+        Map<Long, Pregunta> porId = preguntas
+                .findByIdIn(suyas.stream().map(Respuesta::getPreguntaId).toList()).stream()
+                .collect(Collectors.toMap(Pregunta::getId, Function.identity()));
+        return puntuar(suyas, porId);
     }
 
     /**
@@ -96,7 +120,7 @@ public class ServicioCalificacionImpl implements ServicioCalificacion {
      * que de verdad puntúan. Así una evaluación de 12 preguntas puntuables y otra de 20 se
      * pueden comparar entre sí.
      */
-    private BigDecimal puntuar(List<Respuesta> suyas, Map<Long, Pregunta> porId) {
+    private ResumenCerrado puntuar(List<Respuesta> suyas, Map<Long, Pregunta> porId) {
         List<Respuesta> conOpcion = suyas.stream()
                 .filter(r -> r.getOpcionId() != null)
                 .filter(r -> {
@@ -105,7 +129,7 @@ public class ServicioCalificacionImpl implements ServicioCalificacion {
                 })
                 .toList();
         if (conOpcion.isEmpty()) {
-            return BigDecimal.ZERO;
+            return new ResumenCerrado(BigDecimal.ZERO, 0);
         }
 
         BigDecimal obtenido = BigDecimal.ZERO;
@@ -123,9 +147,10 @@ public class ServicioCalificacionImpl implements ServicioCalificacion {
                     .orElse(BigDecimal.ZERO));
         }
         if (maximo.compareTo(BigDecimal.ZERO) == 0) {
-            return BigDecimal.ZERO;
+            return new ResumenCerrado(BigDecimal.ZERO, 0);
         }
-        return obtenido.multiply(CIEN).divide(maximo, 2, RoundingMode.HALF_UP);
+        return new ResumenCerrado(obtenido.multiply(CIEN).divide(maximo, 2, RoundingMode.HALF_UP),
+                conOpcion.size());
     }
 
     /**

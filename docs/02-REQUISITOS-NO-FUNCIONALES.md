@@ -38,7 +38,10 @@ llama por su API. Son dos servicios separados: **no comparten base de datos**.
    PostgreSQL         RabbitMQ      Almacén de
    (propio)           (la cola)      archivos
                          |             (propio)
-                    Ollama (califica)
+                         |
+                 DeepSeek (califica)
+                 Google (busca por significado)
+                      servicios de fuera
 ```
 
 Lo que tarda —puntuar un CV, corregir una prueba— no se hace mientras el candidato espera.
@@ -54,19 +57,20 @@ Se deja en una cola y se atiende aparte. Por eso hay una cola en el dibujo.
 | Archivos | Almacén propio, fuera de la base de datos |
 | Cola de trabajo en segundo plano | RabbitMQ |
 | Comunicación con el frontend | API REST con JSON |
-| Modelo que busca por significado | **Ollama**, corriendo en el propio servidor |
-| Modelo que conversa | **DeepSeek**, un servicio de fuera. Lo usa hoy el motor de agentes, no la selección |
+| Modelo que busca por significado | **Google Gemini**, un servicio de fuera |
+| Modelo que conversa y califica | **DeepSeek**, un servicio de fuera |
 | Correo | Desde el dominio propio de Renaser |
 
-La parte que busca por significado corre **dentro del servidor de Renaser**. La parte que
-conversa con un modelo grande usa DeepSeek, que es de otra empresa, y hoy solo la usa el
-motor de agentes: **la selección de personal no llama a ningún modelo todavía**, así que
-ningún dato de un candidato sale de Renaser.
+**Ningún modelo corre dentro del servidor de Renaser.** Los dos son de otras empresas, y
+Renaser aceptó que los datos de candidatos salgan hacia ellos (decisión del 18/08/2026). Se
+eligió así porque un modelo propio exige una máquina cara y dedicada, y la calidad de los de
+fuera es mejor.
 
-⚠️ **Eso deja una decisión abierta**, y hay que cerrarla antes de que la IA lea a un
-candidato: o esa lectura la hace el modelo del propio servidor —que es lo que se prometió y
-lo que evita el problema legal— o se rehacen los textos de consentimiento para nombrar al
-tercero. Un modelo local no cuesta por consulta pero exige una máquina que aguante.
+⚠️ **Los textos de consentimiento todavía no nombran a ninguna de las dos empresas.** Hoy no
+hay daño, porque la selección de personal aún no llama a ningún modelo y no sale el dato de
+nadie. Deja de ser verdad en cuanto funcionen los agentes que califican. **Renaser tiene que
+aprobar un texto nuevo antes de que la IA lea al primer candidato real**, y ese texto tiene
+que decir qué se manda y a quién.
 
 ### Cuánta gente lo va a usar
 
@@ -169,8 +173,10 @@ contactos, y pedir el borrado de datos.
 1. Que sus datos se usan para evaluar su postulación, y que participan agentes de inteligencia
    artificial en esa evaluación.
 2. Qué se hace con sus entregables y qué confidencialidad aplica.
-3. Dónde se guardan sus datos y **cuánto tiempo**. Como todo corre en servidores de Renaser, no
-   hay que declarar envío a otro país.
+3. Dónde se guardan sus datos y **cuánto tiempo**.
+4. **A qué empresas de fuera se envían y qué se les manda.** La base de datos y los archivos se
+   quedan en Renaser, pero los modelos que califican y buscan por significado son de otras
+   empresas y están fuera del país, así que hay **flujo transfronterizo** que declarar.
 
 **RNF-13b** El **periodo de conservación es configuración**, fijada según la política aprobada.
 **No se escribe un número de meses en el código.** Al vencer, el sistema ejecuta la política
@@ -191,10 +197,13 @@ se envía al modelo. Qué se oculta es configurable, y la lista arranca con esos
 **RNF-17** El sistema guarda qué versión del CV se envió a la IA, para poder demostrar que la
 regla se cumplió.
 
-**RNF-18** Los datos de un candidato **no salen de Renaser** ni se le mete en un proceso al
-que no postuló. Nadie ajeno a la empresa los ve, y nadie aparece como candidato de una
-vacante sin haberse postulado a ella. Esto incluye no mandarlos a un modelo de otra empresa:
-ver «Inteligencia artificial», donde queda anotado que esa elección está abierta.
+**RNF-18** A un candidato **no se le mete en un proceso al que no postuló**, y **ninguna
+persona ajena a Renaser ve sus datos**. Nadie aparece como candidato de una vacante sin
+haberse postulado a ella.
+
+Lo que sí sale, y solo eso, es lo que necesitan los modelos para calificar: el currículum ya
+recortado y las respuestas, hacia las dos empresas nombradas en «Inteligencia artificial». Va
+por máquina, no lo lee nadie, y el candidato lo acepta antes en el texto de consentimiento.
 
 Distinto es lo que pasa **dentro de sus propias postulaciones**: parte de lo que ya respondió
 puede reutilizarse para no hacérselo repetir. Eso es una comodidad para él, no un uso de sus
@@ -265,18 +274,26 @@ que el propio modelo dio con dudas.
 
 # 5. Inteligencia artificial
 
-**RNF-33** El modelo que califica a un candidato corre **en el propio servidor** (Ollama). La
-lógica de evaluación no depende de cuál sea: cambiar de modelo, o pasar a uno de pago, no
-obliga a reescribirla.
-*Por qué:* que el modelo sea local es lo que permite prometerle al candidato que sus datos no
-salen de Renaser. Y que sea intercambiable es lo que permite mejorar la calidad si el modelo
-local se queda corto calificando.
+**RNF-33** El modelo que califica a un candidato es **un servicio de fuera** (DeepSeek), y el
+que busca por significado también (Google Gemini). La lógica de evaluación no depende de cuál
+sea: cambiar de modelo, o volver a uno propio, no obliga a reescribirla.
+*Por qué:* un modelo dentro del servidor exige una máquina cara y dedicada, y hoy los de fuera
+califican mejor. Renaser aceptó el intercambio el 18/08/2026. Que el modelo sea intercambiable
+es lo que deja la puerta abierta a rehacer esa elección sin tocar la evaluación.
 
-⚠️ **Hoy esto no está probado en código, porque la IA todavía no califica a nadie.** El
-proyecto tiene configurado DeepSeek —un servicio de fuera— para el motor de agentes, y al
-construir el Perfil Integral hay que elegir explícitamente: o el modelo local, cumpliendo este
-requisito, o DeepSeek, y entonces este requisito y los textos de consentimiento cambian. **No
-es una decisión que se pueda dejar al descuido de la configuración.**
+**RNF-33.1** El candidato tiene que **saber a quién se mandan sus datos**. El texto de
+consentimiento nombra las empresas y dice qué se les envía. Sin ese texto aprobado, la
+calificación con IA no se enciende para candidatos reales.
+*Por qué:* es lo único que sostiene legalmente al requisito anterior. Un modelo propio evitaba
+tener que contarlo; uno de fuera obliga.
+
+**RNF-33.2** Antes de salir hacia el modelo, el currículum se recorta: **sin foto, edad, sexo
+ni estado civil**. Son dos archivos, no uno, y lo que sale es siempre la versión recortada,
+nunca el original que subió la persona.
+
+⚠️ **Nada de esto está probado en código todavía, porque la IA aún no califica a nadie.** Los
+tres agentes del hito 2 son los que lo vuelven real. Mientras no existan, ningún dato de
+candidato sale de Renaser.
 
 **RNF-34** Los textos de instrucción que se envían a la IA se administran como configuración,
 con versiones, y se pueden cambiar sin volver a desplegar el sistema.

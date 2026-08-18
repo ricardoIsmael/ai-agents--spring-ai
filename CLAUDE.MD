@@ -21,18 +21,23 @@ el sistema (reclutamiento y agentes de IA juntos).
 | Spring Boot | 4.1 |
 | Base de datos | PostgreSQL propio con pgvector, en `docker-compose.yml`, puerto 5433 |
 | Cola | RabbitMQ, para calificar en segundo plano |
-| IA · chat | Spring AI con **DeepSeek**, que es una API externa. Exige `DEEPSEEK_API_KEY`: sin ella la aplicacion **no arranca** |
-| IA · embeddings | **Ollama**, local, en el propio servidor |
+| IA · chat | Spring AI con **DeepSeek** (`deepseek-v4-flash`), API externa |
+| IA · embeddings | **Google Gemini** (`gemini-embedding-2`, 1536 dimensiones), API externa |
 | Otros | MapStruct, Lombok, hilos virtuales |
 
-Flyway, Security, JWT, Validation y Swagger ya estan en el `pom.xml` y compilan.
+Las claves viven en `application-secrets.yaml`, en la raiz y fuera de git. El
+`application.yaml` lo carga con `spring.config.import`, asi que no hacen falta variables de
+entorno. Flyway, Security, JWT, Validation y Swagger ya estan en el `pom.xml` y compilan.
 
-**Donde salen los datos, hoy.** El chat va a la API de DeepSeek; los embeddings se quedan
-en Ollama, en la maquina. Hoy **ningun dato de candidato sale**, porque el modulo de
-seleccion no llama al modelo de chat: la IA todavia no lee ni califica a nadie.
-⚠️ **Eso cambia en el hito 2**, cuando la IA arme el Perfil Integral. Ahi hay que decidir si
-ese chat va por Ollama local o si se rehacen los textos de consentimiento, que hoy no
-mencionan ningun tercero.
+**Donde salen los datos.** Ya no queda nada local: el chat va a DeepSeek y los embeddings a
+Google. **Renaser acepto que los datos de candidatos salgan hacia esos dos** (decision del
+18/08/2026), asi que la pregunta ya no es si salen, sino que el candidato lo sepa.
+
+⚠️ **Los textos de consentimiento todavia no nombran a ningun tercero.** Hoy eso no rompe
+nada porque el modulo de seleccion aun no llama al modelo: la IA no lee ni califica a nadie.
+**Deja de ser cierto en cuanto corran los tres agentes de calificacion del hito 2**, que es
+cuando el curriculum y las respuestas salen de verdad. Renaser tiene que aprobar un texto
+nuevo antes de que pase por ahi el primer candidato real.
 
 ## RENASER OS
 Es un proyecto avanzado y este backend es un modulo suyo. Son **dos servicios separados que

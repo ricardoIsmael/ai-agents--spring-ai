@@ -16,4 +16,18 @@ public interface ServicioCalificacion {
      * @return la nota de la evaluación sobre 100
      */
     java.math.BigDecimal calificarLoCerrado(Long postulacionId);
+
+    /**
+     * Lo mismo, pero sin guardar nada.
+     *
+     * <p>Lo usa el Perfil de Talento, que necesita volver a mirar la nota de lo cerrado para
+     * combinarla con la de lo abierto. Devuelve también cuántas preguntas la produjeron,
+     * porque esa cuenta es la que pondera las dos mitades: no pesa igual una nota sacada de
+     * 20 preguntas que una de 3.
+     */
+    ResumenCerrado resumenDeLoCerrado(Long postulacionId);
+
+    /** La nota de lo cerrado, sobre 100, y de cuántas preguntas salió. */
+    record ResumenCerrado(java.math.BigDecimal nota, int preguntas) {
+    }
 }

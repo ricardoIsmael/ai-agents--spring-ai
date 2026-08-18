@@ -71,6 +71,10 @@ public class FlujoPruebaIT {
         registro.add("app.seguridad.jwt-secreto",
                 () -> "clave-de-pruebas-suficientemente-larga-para-hmac-256-bits");
         registro.add("spring.ai.deepseek.api-key", () -> "clave-de-pruebas-no-se-usa");
+        // La calificacion con IA se apaga en estas pruebas: aqui no se prueba, y si estuviera
+        // encendida cada entrega intentaria hablar con DeepSeek con una clave de mentira.
+        // Quien la prueba de verdad es FlujoCalificacionIaIT, con el modelo sustituido.
+        registro.add("renaser.ai.calificacion.habilitada", () -> "false");
     }
 
     @Autowired MockMvc mvc;

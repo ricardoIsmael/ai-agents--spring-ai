@@ -29,7 +29,7 @@ public class VacantesPanelController {
     @GetMapping("/puestos")
     @PreAuthorize("@permisos.tiene('ver_vacantes')")
     @Operation(summary = "El catálogo de puestos activos")
-    public List<GuardarPuesto> puestos() {
+    public List<PuestoResponse> puestos() {
         return servicio.listarPuestos(permisos.actual());
     }
 

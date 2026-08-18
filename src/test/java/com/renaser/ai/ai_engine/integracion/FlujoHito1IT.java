@@ -70,6 +70,10 @@ public class FlujoHito1IT {
         // El chat de agentes exige una clave para construir su bean. Aquí nadie llama al
         // modelo, pero sin este valor el contexto entero no arranca.
         registro.add("spring.ai.deepseek.api-key", () -> "clave-de-pruebas-no-se-usa");
+        // La calificacion con IA se apaga en estas pruebas: aqui no se prueba, y si estuviera
+        // encendida cada entrega intentaria hablar con DeepSeek con una clave de mentira.
+        // Quien la prueba de verdad es FlujoCalificacionIaIT, con el modelo sustituido.
+        registro.add("renaser.ai.calificacion.habilitada", () -> "false");
     }
 
     @Autowired MockMvc mvc;

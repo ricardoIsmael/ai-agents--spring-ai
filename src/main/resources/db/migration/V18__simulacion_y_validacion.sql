@@ -256,6 +256,28 @@ JOIN criterio c ON c.codigo = x.codigo AND c.version_plantilla_prueba_id IS NULL
 JOIN nivel_puesto n ON true
 WHERE vp.etiqueta = 'v4 embudo completo';
 
+-- Los pesos de dimensión de la v4: se copian de la v2 tal cual.
+--
+-- La v4 cambia cómo se reparte el puntaje ENTRE etapas, no lo que vale cada dimensión del
+-- banco dentro del Perfil de Talento. Copiar es lo correcto; inventar números nuevos, no.
+--
+-- Sin esto la versión activa se queda sin `peso_dimension` y se repite el hueco de la V15:
+-- el panel de pesos muestra la rejilla de dimensiones vacía, y `validarSumas` da por buena
+-- una versión que no tiene ninguna fila que sumar. Hoy no altera la nota que calcula la IA
+-- -ese camino no lee esta tabla-, pero deja publicada una versión incompleta.
+INSERT INTO peso_dimension (version_pesos_id, nivel_puesto_codigo, dimension_codigo, peso)
+SELECT destino.id, pd.nivel_puesto_codigo, pd.dimension_codigo, pd.peso
+FROM peso_dimension pd
+JOIN version_pesos origen  ON origen.id = pd.version_pesos_id AND origen.etiqueta = 'v2 hito 2'
+JOIN version_pesos destino ON destino.organizacion_id = origen.organizacion_id
+                          AND destino.etiqueta = 'v4 embudo completo'
+WHERE NOT EXISTS (
+    SELECT 1 FROM peso_dimension ya
+    WHERE ya.version_pesos_id = destino.id
+      AND ya.nivel_puesto_codigo = pd.nivel_puesto_codigo
+      AND ya.dimension_codigo = pd.dimension_codigo
+);
+
 -- Las vacantes migran a la v4: si se quedaran en la v3 no podrían puntuar las dos etapas nuevas.
 UPDATE vacante v
 SET version_pesos_id = vp.id

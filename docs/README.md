@@ -35,6 +35,7 @@ requisitos nuevos el 14 de agosto y cambian bastante.
 | [08 · Alcance del MVP](08-ALCANCE-DEL-MVP.md) | Qué se construye primero, en tres hitos, y qué queda fuera |
 | [09 · Las APIs](09-APIS.md) | Las dos puertas, cómo entrar y qué hace cada endpoint. La referencia viva es Swagger |
 | [Curso del backend](CURSO-BACKEND.md) | Ruta para entender el código que existe, en orden. Para quien entra al proyecto |
+| [Calificación con IA](CALIFICACION-CON-IA.md) | Cómo la IA lee el currículum, califica lo abierto y arma el Perfil de Talento. Y qué pasa si falla |
 
 ### Diagramas
 
@@ -98,20 +99,20 @@ pasa), **sin datos** (falta evidencia) o **reserva** (no para esta vacante, pero
 | Backend | Java 25 con Spring Boot 4.1 |
 | Base de datos | PostgreSQL propio, con pgvector |
 | Trabajo en segundo plano | RabbitMQ |
-| Inteligencia artificial · conversación | DeepSeek, que es un servicio externo |
-| Inteligencia artificial · búsqueda por significado | Ollama, en el propio servidor |
+| Inteligencia artificial · conversación y calificación | DeepSeek, que es un servicio externo |
+| Inteligencia artificial · búsqueda por significado | Google Gemini, que es un servicio externo |
 | Frontend | Next.js, el de RENASER OS |
 | Identidad del equipo | RENASER OS emite el token; aquí solo se valida |
 
-**Qué sale de Renaser y qué no.** La base de datos, los archivos y la búsqueda por
-significado corren en servidores de Renaser. La parte que conversa con el modelo usa
-DeepSeek, un servicio de fuera.
+**Qué sale de Renaser y qué no.** La base de datos y los archivos viven en servidores de
+Renaser. Los dos modelos son de fuera: DeepSeek califica y Google busca por significado.
+Renaser aceptó que los datos de candidatos salgan hacia ellos el 18 de agosto de 2026.
 
-Hoy **ningún dato de un candidato sale de Renaser**, porque la selección de personal
-todavía no usa esa parte: la inteligencia artificial no lee ni califica a nadie. Eso
-cambia cuando se construya el Perfil Integral (ver [Alcance del MVP](08-ALCANCE-DEL-MVP.md)),
-y entonces hay que decidir una de dos: que esa lectura la haga el modelo del propio
-servidor, o rehacer los textos de consentimiento, que hoy no mencionan a ningún tercero.
+Hoy **ningún dato de un candidato sale todavía**, porque la selección de personal aún no
+llama a ningún modelo: la inteligencia artificial no lee ni califica a nadie. Eso cambia en
+cuanto funcionen los agentes que califican el Perfil Integral. Antes de que pase por ahí el
+primer candidato real, **Renaser tiene que aprobar un texto de consentimiento nuevo** que
+nombre a las dos empresas y diga qué se les envía: el actual no menciona a ninguna.
 
 ---
 

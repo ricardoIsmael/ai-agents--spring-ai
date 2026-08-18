@@ -20,6 +20,9 @@ public class Cv {
     private Long archivoOriginalId;
     private Long archivoAnonimizadoId;
     private String textoExtraido;
+    // La única versión que ve la IA: sin foto, edad, sexo ni estado civil (RF-41)
+    private String textoAnonimizado;
+    private Instant anonimizadoEn;
     // El texto obligatorio del formulario: «cuéntanos qué cambió gracias a tu trabajo».
     // Vive aquí porque es evidencia 1:1 con la postulación y se vacía al anonimizar.
     private String resultadoOrgulloso;

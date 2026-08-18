@@ -11,6 +11,11 @@ alcance en [08-ALCANCE-DEL-MVP.md](08-ALCANCE-DEL-MVP.md).
 que la inteligencia artificial lea el currículum, califique las respuestas abiertas y arme el
 Perfil de Talento.**
 
+> ⚠️ **Actualizado el 18/08/2026: eso ya está hecho.** Los tres agentes se ejecutan, el
+> currículum se lee sin foto, edad, sexo ni estado civil, y la postulación avanza sola hasta
+> «por confirmar». Lo cuenta [CALIFICACION-CON-IA.md](CALIFICACION-CON-IA.md); lo de abajo se
+> conserva como estaba el 17.
+
 ---
 
 ## Lo que ya funciona
@@ -103,9 +108,10 @@ clave no se filtra y que la evaluación de otro responde 404.
 
 ---
 
-## Lo que falta: la calificación con IA
+## Lo que faltaba: la calificación con IA
 
-Es lo único que queda del hito 2:
+**Hecho el 18/08/2026** — ver [CALIFICACION-CON-IA.md](CALIFICACION-CON-IA.md). Era lo único
+que quedaba del hito 2:
 
 | Qué | Agente |
 |---|---|
@@ -113,12 +119,12 @@ Es lo único que queda del hito 2:
 | Calificar las respuestas abiertas de 0 a 4, con su evidencia citada | `EVALUADOR` |
 | Armar el Perfil de Talento y asignar el grupo de prioridad | `POTENCIAL_RIESGO` |
 
-Los tres tienen su instrucción escrita y editable desde el panel. Falta el código que los
-ejecute y guarde el resultado.
+Los tres tienen su instrucción escrita y editable desde el panel, y ya existe el código que
+los ejecuta y guarda el resultado.
 
-Antes hace falta una cosa que nadie ha construido todavía: **la IA solo puede leer el
-currículum sin foto, edad, sexo ni estado civil**, y hoy el sistema no extrae el texto del
-PDF ni produce esa versión recortada. Es requisito, no mejora.
+También estaba pendiente lo que hacía falta antes: **la IA solo puede leer el currículum sin
+foto, edad, sexo ni estado civil**. Ahora el sistema saca el texto del archivo y produce esa
+versión recortada, y guarda las dos para poder demostrarlo.
 
 ### Sobre el «Paso 0»
 

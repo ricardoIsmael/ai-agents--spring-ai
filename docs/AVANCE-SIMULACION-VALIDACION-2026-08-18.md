@@ -158,4 +158,6 @@ postulaciones que se calificaron con ella conservan su nota tal como se calculó
 - `validacion` — el periodo y sus métricas
 - `perfilintegral.service.CalificacionPorCriterio` — la calificación por rúbrica, ahora
   compartida por las tres etapas que la usan
-- La migración nueva es `V16`.
+- La migración nueva es `V18`. Nació como `V16`, pero ese número ya lo ocupaban dos
+  migraciones de la rama de agentes (`V16` del CV anonimizado y `V17` de los pesos), y
+  Flyway no arranca con dos del mismo número.

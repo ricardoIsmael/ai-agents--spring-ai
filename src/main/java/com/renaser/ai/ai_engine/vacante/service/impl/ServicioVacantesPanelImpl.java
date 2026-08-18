@@ -56,9 +56,9 @@ public class ServicioVacantesPanelImpl implements ServicioVacantesPanel {
     }
 
     @Override
-    public List<GuardarPuesto> listarPuestos(ContextoUsuario quien) {
+    public List<PuestoResponse> listarPuestos(ContextoUsuario quien) {
         return puestos.findByOrganizacionIdAndEsActivoTrueOrderByNombre(quien.organizacionId()).stream()
-                .map(p -> new GuardarPuesto(p.getCodigo(), p.getNombre(),
+                .map(p -> new PuestoResponse(p.getId(), p.getCodigo(), p.getNombre(),
                         p.getNivelPuestoCodigo(), p.getFamiliaCodigo()))
                 .toList();
     }

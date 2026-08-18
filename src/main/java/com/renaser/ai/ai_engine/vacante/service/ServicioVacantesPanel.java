@@ -9,7 +9,7 @@ public interface ServicioVacantesPanel {
 
     Long crearPuesto(ContextoUsuario quien, GuardarPuesto datos);
 
-    List<GuardarPuesto> listarPuestos(ContextoUsuario quien);
+    List<PuestoResponse> listarPuestos(ContextoUsuario quien);
 
     // Crear exige una solicitud ABIERTA (aprobada por Dirección). Nace en BORRADOR.
     Long crear(ContextoUsuario quien, GuardarVacante datos);

@@ -100,8 +100,141 @@ class Api:
     post = lambda self, ruta, datos=None: self.pide("POST", ruta, json=datos)
 
 
+# La consola de Windows viene en cp1252 y revienta con «», → o cualquier acento al
+# imprimir. El script se cae por un print, con toda la siembra ya hecha en el servidor.
+# Se fuerza UTF-8 en la salida; si la terminal no lo admite, se sustituye el carácter
+# en vez de abortar.
+def _salida_utf8():
+    for flujo in (sys.stdout, sys.stderr):
+        try:
+            flujo.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError):
+            pass
+
+
 def paso(texto):
     print(f"  {texto}", flush=True)
+
+
+NIVEL_DE_PUESTO = {codigo: nivel for codigo, _, nivel, _ in PUESTOS}
+
+NOMBRE_PLANTILLA_PRUEBA = "Prueba de ejecución · demo"
+
+# Las preguntas de defensa: se hacen DESPUÉS de producir, y sirven para distinguir a
+# quien hizo el trabajo de quien lo copió. Ninguna migración las siembra. RF-83 exige
+# entre 8 y 10 universales y entre 3 y 5 específicas del puesto, y publicar lo verifica.
+PREGUNTAS_UNIVERSALES = [
+    ("U01", "¿Qué hiciste primero y por qué ese y no otro?"),
+    ("U02", "¿Qué dejaste fuera a propósito, y qué pasa si nadie lo atiende?"),
+    ("U03", "¿Qué parte te costó más y cómo la resolviste?"),
+    ("U04", "¿Cómo supiste que ibas bien mientras lo hacías?"),
+    ("U05", "¿Qué supuesto diste por bueno sin poder comprobarlo?"),
+    ("U06", "¿Qué harías distinto si tuvieras el doble de tiempo?"),
+    ("U07", "¿Qué le preguntarías a quien te encargó esto, si pudieras?"),
+    ("U08", "¿Qué parte de tu entrega no defenderías delante de un cliente?"),
+]
+
+PREGUNTAS_ESPECIFICAS = [
+    ("E01", "¿Cómo repartiste el tiempo entre dejarlo bien hecho y entregar a tiempo?"),
+    ("E02", "Si tu criterio de orden choca con lo que pide tu jefe, ¿qué haces?"),
+    ("E03", "Explica tu orden a alguien que no sabe nada del tema."),
+]
+
+
+def catalogo_preguntas(api, puesto_id):
+    """Devuelve los ids de las once preguntas, creando solo las que falten.
+
+    El código es único en la base, así que volver a crearlas daría 409. Se consulta
+    el catálogo primero y se reutiliza lo que ya esté.
+    """
+    existentes = {p["codigo"]: p["id"] for p in api.get("/panel/plantillas-prueba/preguntas")}
+    ids = []
+    guion = ([(c, e, "UNIVERSAL", None) for c, e in PREGUNTAS_UNIVERSALES]
+             + [(c, e, "ESPECIFICA", puesto_id) for c, e in PREGUNTAS_ESPECIFICAS])
+    for codigo, enunciado, tipo, pid in guion:
+        if codigo in existentes:
+            ids.append(existentes[codigo])
+            continue
+        cuerpo = {"codigo": codigo, "enunciado": enunciado, "tipo": tipo}
+        if pid is not None:
+            cuerpo["puestoId"] = pid
+        ids.append(api.post("/panel/plantillas-prueba/preguntas", cuerpo)["id"])
+    return ids
+
+
+def crear_plantilla_prueba(api, puesto_id):
+    """Arma una plantilla de prueba entera y la publica. Devuelve el id de la versión.
+
+    Es lo único del hito 3 que ninguna migración siembra, y sin ella no se puede
+    publicar una vacante. La prueba es corta a propósito: 90 minutos, un solo
+    entregable y una rúbrica de cuatro criterios que suman 100. No pretende ser la
+    prueba real de Renaser —esa la tiene que escribir Renaser— sino algo válido con
+    que probar el sistema de punta a punta.
+
+    Se puede volver a llamar sobre una base ya usada: reutiliza la plantilla si ya
+    existe y le añade una versión nueva. Las versiones a medias de intentos
+    anteriores se quedan en borrador y no estorban: nadie las puede asignar.
+    """
+    ya = next((p for p in api.get("/panel/plantillas-prueba")
+               if p["nombre"] == NOMBRE_PLANTILLA_PRUEBA), None)
+    plantilla = ya or api.post("/panel/plantillas-prueba", {
+        "nombre": NOMBRE_PLANTILLA_PRUEBA,
+    })
+
+    version = api.post(f"/panel/plantillas-prueba/{plantilla['id']}/versiones", {
+        "enunciado":
+            "Tienes una lista de tareas atrasadas y un equipo que no se pone de acuerdo "
+            "en cuál va primero. Ordénalas, explica con qué criterio lo hiciste y di qué "
+            "harías con las que decidas no atender.",
+        "materiales": "La lista de tareas se entrega al empezar.",
+        "herramientasPermitidas": "Cualquiera, siempre que digas cuál usaste.",
+        "modalidad": "CRONOMETRADA",
+        "duracionMinutos": 90,
+        # El cambio inesperado aparece entre el minuto 30 y el 50, sorteado al
+        # empezar para que el segundo candidato no sepa cuándo llega.
+        "minutoCambioMin": 30,
+        "minutoCambioMax": 50,
+        "minutosExtra": 10,
+    })
+    vid = version["id"]
+
+    # El orden lo pone el servicio, no el cuerpo: la variante solo lleva su texto.
+    api.post(f"/panel/plantillas-prueba/versiones/{vid}/variantes", {
+        "texto": "Acaba de entrar una tarea urgente del cliente más grande. Reordena.",
+    })
+    api.post(f"/panel/plantillas-prueba/versiones/{vid}/variantes", {
+        "texto": "La persona que iba a hacer la tarea más pesada se reporta enferma.",
+    })
+
+    api.post(f"/panel/plantillas-prueba/versiones/{vid}/entregables", {
+        "nombre": "La lista ordenada",
+        "detalle": "Un documento con el orden, el criterio y lo que dejas fuera.",
+        "formato": "CUALQUIERA",
+        "esObligatorio": True,
+    })
+
+    # Los puntos suman 100: es lo que el cálculo de la nota de etapa da por hecho.
+    rubrica = [
+        ("CRITERIO", "Criterio de priorización", "¿Se entiende por qué ese orden y no otro?", 40),
+        ("DESCARTE", "Qué deja fuera", "¿Dice qué no atiende y asume la consecuencia?", 25),
+        ("CLARIDAD", "Claridad", "¿Se entiende sin tener que preguntarle?", 20),
+        ("REACCION", "Reacción al cambio", "¿Rehace el orden o defiende el anterior con motivo?", 15),
+    ]
+    for codigo, nombre, descripcion, puntos in rubrica:
+        api.post(f"/panel/plantillas-prueba/versiones/{vid}/rubrica", {
+            "codigo": codigo, "nombre": nombre, "descripcion": descripcion,
+            # Solo admite SISTEMA, AGENTE o PERSONA. Va PERSONA porque el agente
+            # PRUEBA_PUESTO todavía no tiene instrucción escrita: no puede calificar.
+            "puntos": puntos, "metodoVerificacion": "PERSONA",
+        })
+
+    # Sin las once preguntas enganchadas a ESTA versión, publicar devuelve 400.
+    for pregunta_id in catalogo_preguntas(api, puesto_id):
+        api.post(f"/panel/plantillas-prueba/versiones/{vid}/preguntas",
+                 {"preguntaPruebaId": pregunta_id})
+
+    api.post(f"/panel/plantillas-prueba/versiones/{vid}/publicacion")
+    return vid
 
 
 def sembrar(api, uid_equipo):
@@ -115,18 +248,47 @@ def sembrar(api, uid_equipo):
 
     # ---------------------------------------------------------- 2. estructura
     print("\n2 · La estructura de la empresa")
-    areas = {}
+    # Se reutiliza lo que ya exista: así el script se puede volver a lanzar sobre una
+    # base con datos, sin tener que borrarla. El código del puesto es único en la
+    # base, y el área repetida solo ensuciaría el panel con duplicados.
+    areas = {a["nombre"]: a["id"] for a in api.get("/panel/areas")}
+    nuevas = 0
     for nombre in AREAS:
-        areas[nombre] = api.post("/panel/areas", {"nombre": nombre})["id"]
-    paso(f"{len(areas)} áreas")
+        if nombre not in areas:
+            areas[nombre] = api.post("/panel/areas", {"nombre": nombre})["id"]
+            nuevas += 1
+    paso(f"{len(AREAS)} áreas ({nuevas} nuevas, {len(AREAS) - nuevas} ya estaban)")
 
-    puestos = {}
+    puestos = {p["codigo"]: p["id"] for p in api.get("/panel/puestos")}
+    nuevos = 0
     for codigo, nombre, nivel, familia in PUESTOS:
-        puestos[codigo] = api.post("/panel/puestos", {
-            "codigo": codigo, "nombre": nombre,
-            "nivelPuestoCodigo": nivel, "familiaCodigo": familia,
-        })["id"]
-    paso(f"{len(puestos)} puestos")
+        if codigo not in puestos:
+            puestos[codigo] = api.post("/panel/puestos", {
+                "codigo": codigo, "nombre": nombre,
+                "nivelPuestoCodigo": nivel, "familiaCodigo": familia,
+            })["id"]
+            nuevos += 1
+    paso(f"{len(PUESTOS)} puestos ({nuevos} nuevos, {len(PUESTOS) - nuevos} ya estaban)")
+
+    # ------------------------------------------- 2b. lo que exige publicar
+    # Una vacante no se publica sin plantilla de evaluación Y de prueba. La de
+    # evaluación ya viene sembrada por la migración V14, una por nivel: se busca,
+    # no se crea. La de prueba no la siembra nadie, así que se arma aquí.
+    print("\n2b · Las plantillas que exige publicar")
+
+    plantillas_eval = {
+        p["nivelPuestoCodigo"]: p["id"]
+        for p in api.get("/panel/plantillas-evaluacion")
+        if p["estado"] == "PUBLICADA"
+    }
+    if "EJECUCION" not in plantillas_eval:
+        raise RuntimeError(
+            "No hay plantilla de evaluación publicada para EJECUCION. "
+            "¿Se aplicó la migración V14?")
+    paso(f"{len(plantillas_eval)} plantillas de evaluación ya publicadas, se reutilizan")
+
+    version_prueba = crear_plantilla_prueba(api, puestos["DEV_WEB"])
+    paso(f"1 plantilla de prueba creada y publicada (versión {version_prueba})")
 
     # ------------------------------------------------- 3. solicitudes de talento
     print("\n3 · Las Solicitudes de Talento")
@@ -195,6 +357,16 @@ def sembrar(api, uid_equipo):
             "descripcion": "Disponibilidad en Arequipa",
             "regla": "Reside en Arequipa o puede trasladarse antes de empezar",
         })
+        # Sin estas dos, publicar devuelve 409. Y la evaluación tiene que ser del
+        # mismo nivel que el puesto: «Líder de operaciones» es SUPERVISION y los
+        # otros dos EJECUCION, así que la plantilla se elige por el nivel de cada uno.
+        nivel = NIVEL_DE_PUESTO[puesto_cod]
+        if nivel not in plantillas_eval:
+            raise RuntimeError(f"No hay plantilla de evaluación publicada para {nivel}")
+        api.post(f"/panel/vacantes/{v['id']}/plantilla-evaluacion",
+                 {"plantillaEvaluacionId": plantillas_eval[nivel]})
+        api.post(f"/panel/vacantes/{v['id']}/plantilla-prueba",
+                 {"versionPlantillaPruebaId": version_prueba})
         api.post(f"/panel/vacantes/{v['id']}/publicacion")
         vacantes.append({"id": v["id"], "titulo": titulos[i], "requisito": req["id"]})
     paso(f"{len(vacantes)} vacantes publicadas, cada una con su requisito indispensable")
@@ -209,11 +381,17 @@ def sembrar(api, uid_equipo):
         vacante = vacantes[i % len(vacantes)]
 
         api.token = None  # el portal es público
-        api.post("/portal/cuentas", {
-            "nombre": nombre, "apellidos": apellidos, "correo": correo,
-            "contrasena": "Demo12345!", "aceptaProceso": True,
-            "aceptaFuturosContactos": i % 3 != 0,
-        })
+        try:
+            api.post("/portal/cuentas", {
+                "nombre": nombre, "apellidos": apellidos, "correo": correo,
+                "contrasena": "Demo12345!", "aceptaProceso": True,
+                "aceptaFuturosContactos": i % 3 != 0,
+            })
+        except RuntimeError:
+            # Ya existe de una siembra anterior: se entra con ella y se postula otra
+            # vez. Postular dos veces a la misma vacante sí lo rechaza el backend, y
+            # eso es correcto: nadie se postula dos veces al mismo puesto.
+            pass
         api.token = api.post("/portal/auth/login", {"correo": correo, "contrasena": "Demo12345!"})["token"]
 
         campos = {
@@ -295,6 +473,7 @@ def resumen(api):
 
 
 def main():
+    _salida_utf8()
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--api", default="http://localhost:8080/api/v1")
     p.add_argument("--uid", default="dev-equipo",

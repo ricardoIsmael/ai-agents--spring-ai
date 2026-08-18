@@ -3,6 +3,9 @@ package com.renaser.ai.ai_engine.postulacion.controller;
 import com.renaser.ai.ai_engine.postulacion.service.ServicioPostulacionesPanel;
 
 import com.renaser.ai.ai_engine.postulacion.dto.DtosPostulacion.*;
+import com.renaser.ai.ai_engine.perfilintegral.dto.DtosPerfilIntegral.CalificacionEncoladaResponse;
+import com.renaser.ai.ai_engine.perfilintegral.dto.DtosPerfilIntegral.PerfilIntegralResponse;
+import com.renaser.ai.ai_engine.perfilintegral.service.ServicioPerfilIntegralPanel;
 import com.renaser.ai.ai_engine.seguridad.service.Permisos;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -13,6 +16,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -23,6 +27,7 @@ import java.util.List;
 public class PostulacionesPanelController {
 
     private final ServicioPostulacionesPanel servicio;
+    private final ServicioPerfilIntegralPanel perfilIntegral;
     private final Permisos permisos;
 
     @GetMapping("/bandeja")
@@ -45,6 +50,33 @@ public class PostulacionesPanelController {
     @Operation(summary = "La ficha completa de una postulación")
     public FichaPostulacion ficha(@PathVariable Long id) {
         return servicio.ficha(permisos.actual(), id);
+    }
+
+    // Los dos verbos del Perfil Integral viven en este controlador y no en uno nuevo a
+    // propósito: la ruta es de postulaciones y este ya está declarado en ManejadorErrores
+    // y ConfiguracionSwagger. Un controlador nuevo obligaría a tocar las dos.
+    @GetMapping("/postulaciones/{id}/perfil-integral")
+    @PreAuthorize("@permisos.tiene('ver_perfil_integral')")
+    @Operation(summary = "El retrato que armó la IA: notas del currículum, hallazgos y alertas. "
+            + "Si todavía no ha corrido, «estadoCalificacion» dice en qué punto está")
+    public PerfilIntegralResponse perfilIntegral(@PathVariable Long id) {
+        return perfilIntegral.ver(permisos.actual(), id);
+    }
+
+    @PostMapping(value = "/postulaciones/{id}/cv", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("@permisos.tiene('ajustar_nota')")
+    @Operation(summary = "Reemplazar el currículum de una postulación. Borra el texto ya "
+            + "extraído: se vuelve a leer en la próxima calificación")
+    public void reemplazarCv(@PathVariable Long id, @RequestParam("cv") MultipartFile cv) {
+        perfilIntegral.reemplazarCv(permisos.actual(), id, cv);
+    }
+
+    @PostMapping("/postulaciones/{id}/calificacion-perfil-integral")
+    @PreAuthorize("@permisos.tiene('ajustar_nota')")
+    @Operation(summary = "Pedir que la IA califique, o que vuelva a calificar. Encola y "
+            + "responde al momento: la llamada al modelo tarda decenas de segundos")
+    public CalificacionEncoladaResponse calificarPerfilIntegral(@PathVariable Long id) {
+        return perfilIntegral.recalificar(permisos.actual(), id);
     }
 
     @GetMapping("/postulaciones/{id}/historial")

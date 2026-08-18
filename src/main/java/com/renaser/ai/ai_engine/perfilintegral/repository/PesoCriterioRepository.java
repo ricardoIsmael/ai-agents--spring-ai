@@ -14,4 +14,9 @@ public interface PesoCriterioRepository extends JpaRepository<PesoCriterio, Peso
     // diez de simulación y las nueve métricas de validación pesan distinto según el nivel.
     Optional<PesoCriterio> findByVersionPesosIdAndNivelPuestoCodigoAndCriterioId(
             Long versionPesosId, String nivelPuestoCodigo, Long criterioId);
+
+    // Todos los pesos de un nivel de golpe: lo que necesita la IA para puntuar los ocho
+    // criterios del currículum en una sola pasada, sin una consulta por criterio.
+    List<PesoCriterio> findByVersionPesosIdAndNivelPuestoCodigo(Long versionPesosId,
+                                                                String nivelPuestoCodigo);
 }

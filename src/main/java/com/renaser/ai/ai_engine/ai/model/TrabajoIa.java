@@ -25,6 +25,8 @@ public class TrabajoIa {
     private String estado;
     @Builder.Default
     private Integer intentos = 0;
+    // Cuándo lo tomó un trabajador: es lo que permite ver si un EN_CURSO se quedó colgado
+    private Instant tomadoEn;
     private Instant terminadoEn;
     private Instant creadoEn;
 }

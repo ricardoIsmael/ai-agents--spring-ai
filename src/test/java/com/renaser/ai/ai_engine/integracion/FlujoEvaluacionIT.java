@@ -69,6 +69,10 @@ public class FlujoEvaluacionIT {
         registro.add("app.seguridad.jwt-secreto",
                 () -> "clave-de-pruebas-suficientemente-larga-para-hmac-256-bits");
         registro.add("spring.ai.deepseek.api-key", () -> "clave-de-pruebas-no-se-usa");
+        // La calificacion con IA se apaga en estas pruebas: aqui no se prueba, y si estuviera
+        // encendida cada entrega intentaria hablar con DeepSeek con una clave de mentira.
+        // Quien la prueba de verdad es FlujoCalificacionIaIT, con el modelo sustituido.
+        registro.add("renaser.ai.calificacion.habilitada", () -> "false");
     }
 
     @Autowired MockMvc mvc;
@@ -92,10 +96,13 @@ public class FlujoEvaluacionIT {
                 "select count(*) from pregunta where tipo in ('ESTILO','CONSISTENCIA') and es_puntuable",
                 Integer.class)).isZero();
 
-        // Y los pesos suman 100 por nivel, que es lo que exige publicar una versión
+        // Y los pesos suman 100 por nivel DENTRO DE CADA VERSION, que es lo que exige publicar
+        // una version. Sin agrupar tambien por version esto sumaba todas las versiones juntas
+        // y daba 100 solo mientras la v2 fuese la unica con pesos de dimension: en cuanto la
+        // v3 y la v4 los tuvieron, dio 200 y luego 300 sin que nada estuviera mal.
         jdbc.queryForList("""
-                select nivel_puesto_codigo, sum(peso) suma from peso_dimension
-                group by 1""").forEach(fila ->
+                select version_pesos_id, nivel_puesto_codigo, sum(peso) suma from peso_dimension
+                group by 1, 2""").forEach(fila ->
                 assertThat(((Number) fila.get("suma")).doubleValue()).isEqualTo(100.0));
     }
 
