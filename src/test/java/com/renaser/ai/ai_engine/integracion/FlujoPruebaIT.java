@@ -271,21 +271,20 @@ public class FlujoPruebaIT {
 
     @Test
     @Order(4)
-    void sinSimulacionNiValidacionConfirmarAvanceFallaConMensajeClaro() throws Exception {
-        // Entregada la prueba, todavía queda un paso "normal" dentro de la misma etapa:
-        // PRUEBA_CALIFICANDO -> PRUEBA_POR_CONFIRMAR. Eso sí debe funcionar.
+    void elRecorridoSigueSinSaltosManuales() throws Exception {
+        // Entregada la prueba: PRUEBA_CALIFICANDO -> PRUEBA_POR_CONFIRMAR
         conToken(post("/api/v1/panel/postulaciones/" + postulacionId + "/confirmacion-avance"), tokenTalento,
                 "{\"motivo\":\"Prueba calificada\"}").andExpect(status().isOk());
         conTokenGet("/api/v1/portal/postulaciones", tokenCandidato)
                 .andExpect(jsonPath("$[0].estado").value("PRUEBA_POR_CONFIRMAR"));
 
-        // Pero desde aquí, "confirmar avance" calcularía SIMULACION_POR_HABILITAR, una etapa
-        // que no existe todavía. Debe fallar con un mensaje que explique el porqué y qué
-        // hacer, no dejar a nadie esperando en un estado fantasma.
+        // Y de aquí a simulación, sin saltos ni transiciones manuales. Antes esto fallaba a
+        // propósito -la etapa no existía y había un guardia que lo impedía-; ahora el
+        // recorrido sigue solo, que es justo lo que este trabajo vino a arreglar.
         conToken(post("/api/v1/panel/postulaciones/" + postulacionId + "/confirmacion-avance"), tokenTalento,
-                "{\"motivo\":\"probar el límite\"}")
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("DECISION_POR_CONFIRMAR")));
+                "{\"motivo\":\"Avanza a la simulación\"}").andExpect(status().isOk());
+        conTokenGet("/api/v1/portal/postulaciones", tokenCandidato)
+                .andExpect(jsonPath("$[0].estado").value("SIMULACION_POR_HABILITAR"));
     }
 
     @Test
@@ -327,20 +326,22 @@ public class FlujoPruebaIT {
 
     @Test
     @Order(6)
-    void ahoraSiSePuedeSaltarManualmenteADecisionYDecidir() throws Exception {
-        // El salto que Simulación/Validación dejarían automático, aquí es manual con motivo
-        // -exactamente lo que RF-121 ya permite para cualquier transición-.
+    void seSaltaLoQueNoAplicaYSeDecide() throws Exception {
+        // Simulación y validación se pueden saltar cuando el puesto no las necesita: es una
+        // transición manual con motivo, que RF-121 permite para cualquier salto. Lo que ya no
+        // hace falta es saltárselas por obligación, que era el parche de antes.
         conToken(post("/api/v1/panel/postulaciones/" + postulacionId + "/transiciones"), tokenTalento, """
                 {"estadoDestino":"DECISION_POR_CONFIRMAR",
-                 "motivo":"Simulación y validación están fuera del alcance de este MVP"}""")
+                 "motivo":"Este puesto no requiere simulación ni periodo de validación"}""")
                 .andExpect(status().isOk());
 
         JsonNode semaforo = json.readTree(
                 conTokenGet("/api/v1/panel/postulaciones/" + postulacionId + "/semaforo", tokenTalento)
                         .andExpect(status().isOk())
                         .andReturn().getResponse().getContentAsString());
-        assertThat(semaforo.get("etapasQueFaltan")).isEmpty();
-        assertThat(semaforo.get("notaGlobal").asDouble()).isGreaterThan(0);
+        // Ahora la vacante pesa las cuatro etapas, así que faltan las dos que se saltaron:
+        // el semáforo lo dice en vez de inventarse una nota con la mitad de la evidencia.
+        assertThat(semaforo.get("etapasQueFaltan")).isNotEmpty();
 
         // Talento no decide: RF-119 dice que es del responsable del área o de Dirección.
         // tokenTalento es el usuario de bootstrap del primer dev-login -tiene TALENTO,

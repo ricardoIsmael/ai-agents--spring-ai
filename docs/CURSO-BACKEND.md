@@ -1,166 +1,161 @@
-# Curso del backend · plan de estudio
+# Ruta de lectura del backend
 
-Plan para entender **todo** este backend leyendo el código que ya existe. No es documentación
-del producto: es la ruta para aprenderlo, en orden, sin saltos.
+Los archivos del backend en el orden en que conviene abrirlos: del más fácil al más difícil.
+Cada uno se entiende con lo que viste en los anteriores. No hace falta leer nada más.
 
-Nivel de partida: Java básico y Spring Boot básico. Los fundamentos que hagan falta
-(inyección de dependencias, JPA, filtros, transacciones) se explican cuando aparecen, sobre el
-código real, no antes.
-
----
-
-## Qué hay realmente aquí
-
-Contado sobre la rama `feat/talentov2`, no sobre los documentos:
+Contado sobre la rama `feat/talentov2`, commit `hito 3`:
 
 | | |
 |---|---|
-| Clases Java | **300**: 113 en `ai/` (motor de agentes) y 187 en selección de personal |
-| Migraciones | V1 a V14. Crean **63 tablas**: 35 del hito 1 y 28 del hito 2 |
-| Estados de postulación | **18**, sembrados en V9 |
-| Roles | **5**: candidato, talento, responsable de área, dirección, administrador |
-| Permisos | **44**: 30 del hito 1 (V9), 13 del hito 2 (V12) y 1 suelto (V13) |
-| Controladores | 12 nuestros, 4 del motor de agentes |
-| Tests | 8 archivos: unitarios, migraciones con Postgres real y dos flujos completos |
+| Clases Java | **344**: 113 del motor de agentes y 231 de selección de personal |
+| Migraciones | V1 a V15, **76 tablas** |
+| Controladores | 15 tuyos, 4 del motor de agentes |
+| Tests | 9 archivos |
 
-Dominios más grandes de selección: `perfilintegral` (67 clases, el hito 2), `seguridad` (16),
-`postulacion` (15), `vacante` (14), `pesos` (13).
-
-⚠️ Dos avisos que cambian lo que hay que creer:
-
-- Los documentos hablan de **93 tablas y 73 permisos**: eso es el sistema completo, no lo
-  construido. Cuando un documento y una migración se contradigan, **manda la migración**.
-- `CLAUDE.MD` dice que la frontera con el motor de agentes son cinco servicios. Hoy son
-  **diez**, más dos clases de `comun`. Creció con el hito 2.
+⚠️ Los documentos de `docs/` describen el sistema completo (93 tablas, 73 permisos). El código
+va por detrás y por otro camino en algunos puntos. **Cuando se contradigan, manda el código.**
 
 ---
 
-## Cómo es cada lección
+## Cómo usar esta ruta
 
-Siempre la misma forma:
+Abres el archivo, lo lees, y preguntas lo que no entiendas. El número de líneas está para que
+sepas a qué te enfrentas: nada de lo primero pasa de 50 líneas.
 
-1. **Qué problema resuelve** — en una frase, sin palabras técnicas.
-2. **El recorrido** — el código real, archivo por archivo, con enlaces a la línea.
-3. **Una pregunta** — la respondes tú. Si no sale, volvemos atrás; no seguimos.
-4. **Qué romper** — un cambio pequeño que hace fallar algo, para ver quién sostiene qué.
-
-Las lecciones 1 a 12 son la **pista A** (selección de personal). La 13 es la **pista B**
-(motor de agentes, de Ricardo, solo lectura). Van separadas porque no comparten arquitectura y
-mezclarlas confunde las dos.
+Marca aquí lo que vayas terminando.
 
 ---
 
-## Pista A · La selección de personal
+## Etapa 0 · Qué se levanta al arrancar
 
-### 1. El mapa: dos proyectos en un repositorio
+Tres archivos, ninguno es Java difícil. Sirven para saber qué hay encendido.
 
-Por qué hay 300 clases que casi no se hablan. Los dominios, qué guarda cada uno, y la frontera
-real: `ai/exception/ResourceNotFoundException` usada en diez servicios, y un controlador del
-hito 2 que vive del lado de Ricardo (`AgentesIaPanelController`). Las dos clases que enumeran
-controladores a mano y hay que tocar al añadir uno: `ManejadorErrores` y `ConfiguracionSwagger`.
+| | Archivo | Líneas | Qué vas a ver |
+|---|---|---|---|
+| 1 | `AiEngineApplication.java` | 13 | El punto de entrada. Todo Spring Boot empieza así |
+| 2 | `src/main/resources/application.yaml` | — | Base de datos, puertos, claves. Aquí se configura todo |
+| 3 | `docker-compose.yml` | — | Postgres en el 5433 y RabbitMQ. Lo que tienes que tener corriendo |
 
-### 2. El arranque: qué pasa antes de la primera petición
+Al terminar sabrás: **por qué la aplicación no arranca sin `DEEPSEEK_API_KEY`.**
 
-`AiEngineApplication`, `application.yaml`, `docker-compose.yml` (Postgres en 5433, RabbitMQ).
-Qué es un bean y quién los crea. Por qué la aplicación **no arranca sin `DEEPSEEK_API_KEY`**
-aunque la selección de personal no use IA. Dónde viven los secretos.
+## Etapa 1 · Las tres piezas mínimas
 
-### 3. Los datos primero: Flyway manda
+Una entidad, un repositorio y un DTO. Con esto ya puedes leer el 60% del proyecto.
 
-Las catorce migraciones en orden y la regla dura: **una migración aplicada no se edita jamás**,
-se escribe otra. `ddl-auto: validate`: JPA no crea ni cambia tablas, solo comprueba que las
-entidades cuadren. Las semillas de V9 y lo que añaden V12–V14.
+| | Archivo | Líneas | Qué vas a ver |
+|---|---|---|---|
+| 4 | `organizacion/entity/Organizacion.java` | 21 | Una clase Java atada a una tabla |
+| 5 | `organizacion/repository/OrganizacionRepository.java` | 11 | Una interfaz vacía que ya sabe consultar. Nadie escribe el SQL |
+| 6 | `solicitud/entity/ResultadoEsperado.java` | 23 | Otra entidad, con una relación a su padre |
+| 7 | `catalogo/dto/DtosCatalogo.java` | 32 | Los `record` que viajan al frontend |
 
-Qué romper: cambia un campo de una entidad sin migración y mira el error de arranque.
+Ábrelos junto a `db/migration/V2__identidad_y_permisos.sql`: ahí está la tabla que la entidad
+copia. **La tabla manda, la clase obedece.**
 
-### 4. Una petición de punta a punta
+## Etapa 2 · Tu primer dominio entero
 
-**La lección central.** Un endpoint simple del panel, seguido entero:
+`solicitud` es el dominio más pequeño y completo. Léelo en este orden exacto: es el mismo
+recorrido que hace una petición HTTP.
 
-```
-petición → filtro → controlador → DTO de entrada → servicio (interfaz)
-        → implementación → repositorio → entidad → base de datos
-        → mapper → DTO de salida → respuesta
-```
+| | Archivo | Líneas | Qué vas a ver |
+|---|---|---|---|
+| 8 | `solicitud/entity/SolicitudTalento.java` | 41 | La entidad principal |
+| 9 | `solicitud/repository/SolicitudTalentoRepository.java` | 15 | Consultas propias, escritas como nombres de método |
+| 10 | `solicitud/dto/DtosSolicitud.java` | 48 | Lo que entra y lo que sale |
+| 11 | `solicitud/service/ServicioSolicitudes.java` | 21 | La interfaz: qué se puede hacer |
+| 12 | `solicitud/controller/SolicitudesController.java` | 62 | Los endpoints |
+| 13 | `solicitud/service/impl/ServicioSolicitudesImpl.java` | 137 | **La lógica de verdad.** El primero difícil |
 
-Qué hace cada capa, por qué existe y qué pasa si la quitas. Aquí entran los fundamentos:
-inyección de dependencias, `@Transactional`, qué es un DTO y por qué no se devuelve la entidad.
-Todo lo demás es una variación de este recorrido.
+Al terminar sabrás: **por qué el servicio tiene interfaz e implementación separadas.**
 
-### 5. Seguridad · las dos puertas
+## Etapa 3 · Seguridad
 
-Dos formas de entrar —el candidato con cuenta propia, el equipo con el token de RENASER OS— y
-por qué no se parecen. `FiltroIdentidad`, `ServicioToken`, `ServicioContexto`, y qué es un
-filtro frente a un controlador.
+Nueve archivos, de menor a mayor. Es el dominio que más se malentiende.
 
-### 6. Seguridad · permisos con alcance
+| | Archivo | Líneas | Qué vas a ver |
+|---|---|---|---|
+| 14 | `seguridad/dto/FiltroAlcance.java` | 18 | Hasta dónde puede ver alguien |
+| 15 | `seguridad/config/PropiedadesSeguridad.java` | 23 | La configuración con tipos |
+| 16 | `seguridad/dto/ContextoUsuario.java` | 25 | Quién es el usuario durante una petición |
+| 17 | `seguridad/service/ServicioContexto.java` | 45 | Quién lo pone ahí |
+| 18 | `seguridad/service/Permisos.java` | 46 | **`alcanceDe`: lo importante del dominio** |
+| 19 | `seguridad/service/ServicioToken.java` | 47 | Firmar y verificar el JWT |
+| 20 | `seguridad/filter/FiltroIdentidad.java` | 66 | Lo que corre *antes* del controlador |
+| 21 | `seguridad/controller/PanelAuthController.java` | 84 | El `dev-login` provisional |
+| 22 | `seguridad/config/ConfiguracionSeguridad.java` | 94 | Qué URL es pública y cuál no |
 
-Un rol no está en el código: es un conjunto de permisos en la base de datos. `Permisos.alcanceDe`
-y lo que casi todos entienden mal: **el alcance se aplica dentro de la consulta**, no filtrando
-en Java después. `TODO` frente a `PROPIO`.
+Al terminar sabrás: **por qué el alcance se aplica dentro de la consulta y no filtrando después.**
 
-Qué romper: quita el alcance de una consulta y mira a un candidato viendo postulaciones ajenas.
+## Etapa 4 · La máquina de estados
 
-### 7. La máquina de estados
+El corazón del negocio. 18 estados, y una sola puerta para cambiar de uno a otro.
 
-Los 18 estados como rejilla —cinco etapas por cuatro momentos, más tres finales—, por eso el
-siguiente estado se **calcula**. `MaquinaEstados.transicionar` como único camino, y el historial
-que no se borra. Lo leemos junto a `MaquinaEstadosTest`, que es la especificación ejecutable.
+| | Archivo | Líneas | Qué vas a ver |
+|---|---|---|---|
+| 23 | `postulacion/entity/EstadoPostulacion.java` | 29 | Los estados como filas, no como enum |
+| 24 | `postulacion/entity/TransicionEstado.java` | 32 | El historial que no se borra |
+| 25 | `postulacion/entity/Postulacion.java` | 34 | La entidad central del sistema |
+| 26 | `postulacion/service/MaquinaEstados.java` | 185 | **Las reglas.** Léelo con el test al lado |
+| 27 | `test/postulacion/service/MaquinaEstadosTest.java` | — | Las reglas escritas como ejemplos |
 
-### 8. Los dominios, en el orden del negocio
+## Etapa 5 · El recorrido del candidato
 
-`solicitud` (qué falta en la empresa) → `vacante` + `pesos` (qué se busca y cuánto vale cada
-etapa) → `postulacion` (la persona avanzando) → `portal` (todo lo que ve el candidato).
+| | Archivo | Líneas | Qué vas a ver |
+|---|---|---|---|
+| 28 | `portal/dto/DtosPortal.java` | 50 | Lo que ve el candidato |
+| 29 | `portal/controller/PortalController.java` | 119 | Los 12 endpoints públicos y con token |
+| 30 | `portal/service/impl/ServicioPortalImpl.java` | 374 | **El archivo más grande de selección** |
 
-### 9. El Perfil Integral · el hito 2
+## Etapa 6 · El panel del equipo
 
-El dominio más grande de selección, 67 clases, y lo que estás construyendo ahora: banco de
-preguntas con versiones, plantillas de evaluación, la evaluación que responde el candidato, la
-calificación y las alertas. Por qué todo va versionado y nada se recalcula hacia atrás.
+| | Archivo | Líneas | Qué vas a ver |
+|---|---|---|---|
+| 31 | `postulacion/repository/PostulacionRepository.java` | 48 | El alcance metido en las consultas |
+| 32 | `postulacion/controller/PostulacionesPanelController.java` | 83 | La otra puerta |
+| 33 | `postulacion/service/impl/ServicioPostulacionesPanelImpl.java` | 230 | Confirmar, ordenar, avanzar por lote |
 
-### 10. Lo transversal
+## Etapa 7 · Las dos clases frontera
 
-`archivo` (almacén en disco, enlaces firmados), `notificacion` (el correo se **registra pero no
-se envía**), `auditoria` (registro que no se modifica), `parametro`, `consentimiento`,
-`catalogo`, `administracion`.
+| | Archivo | Líneas | Qué vas a ver |
+|---|---|---|---|
+| 34 | `comun/exception/ManejadorErrores.java` | 106 | Tus errores en vez de un 500 mudo |
+| 35 | `comun/config/ConfiguracionSwagger.java` | 90 | El candado, solo en tus endpoints |
 
-### 11. Errores y contratos
+Las dos llevan **una lista de controladores escrita a mano**. Un controlador nuevo que no se
+sume aquí falla en silencio.
 
-`ManejadorErrores`: por qué enumera controladores a mano y por qué tiene precedencia máxima.
-Coexisten **dos rutas de error** en el mismo proceso: la nuestra y el `GlobalControllerAdvice`
-de agentes. `ProblemDetail` y qué ve el frontend. Swagger y el candado.
+## Etapa 8 · Hito 2 · el Perfil Integral
 
-### 12. Los tests
+67 clases. El mismo patrón de la etapa 2, repetido. Orden sugerido: `BancoPreguntasController`
+→ `PlantillasEvaluacionController` → `EvaluacionPortalController` → `ServicioEvaluacionImpl` →
+`ServicioCalificacionImpl`.
 
-`MigracionesIT` levanta un Postgres real con Testcontainers. `FlujoHito1IT` y `FlujoEvaluacionIT`
-recorren el sistema entero de una pieza: la forma más rápida de verlo funcionar sin navegador.
-Cómo se corren y cómo leer un fallo.
+## Etapa 9 · Hito 3 · la prueba y la decisión
+
+30 clases en `prueba` y 12 en `decision`, lo último construido (migración V15). `PruebaPortalController`
+→ `ServicioPruebaImpl` → `CalificacionPruebaController` → `DecisionPanelController`.
+
+## Etapa 10 · Los tests
+
+| Archivo | Qué vas a ver |
+|---|---|
+| `integracion/MigracionesIT.java` | Las 15 migraciones contra un Postgres real |
+| `integracion/FlujoHito1IT.java` | El hito 1 entero, de una pieza |
+| `integracion/FlujoEvaluacionIT.java` | El Perfil Integral |
+| `integracion/FlujoPruebaIT.java` | La prueba del puesto |
+
+Es la forma más rápida de ver el sistema funcionando sin abrir el navegador.
+
+## Etapa 11 · El motor de agentes
+
+`ai/`, 113 clases. **No se toca**, pero comparte proceso y base de datos. Entrada:
+`FlowController` → `AgentExecutionServiceImpl` → los prompts en `resources/prompts/`.
 
 ---
 
-## Pista B · El motor de agentes
-
-### 13. `ai/` de un vistazo
-
-Solo lectura: no se toca, pero comparte proceso, base de datos y puerto. Los 15 agentes y su
-respuesta estructurada, `FlowController`, el encadenamiento por RabbitMQ con `routing[]` y tope
-de profundidad, los prompts en `resources/prompts/`, y el RAG con pgvector más Ollama.
-
----
-
-## Cierre · qué falta en el sistema
-
-Saber qué **no** existe es parte de entenderlo.
+## Lo que no existe todavía
 
 | Hueco | Estado |
 |---|---|
-| La identidad del equipo es un `dev-login` | El contrato con RENASER OS no existe aún |
-| El correo se registra pero no sale | Falta el dominio de Renaser |
-| Hito 3 (prueba del puesto, simulación, validación) | Definido en [Alcance del MVP](08-ALCANCE-DEL-MVP.md), sin construir |
-
----
-
-## Ritmo
-
-Una lección por sesión. La 4 es la más importante y puede llevar dos. Las 5 y 6 van juntas o
-ninguna se entiende. En cada lección abres el archivo y al final rompes algo.
+| Identidad del equipo | Hay un `dev-login`; el contrato con RENASER OS no existe |
+| Correo | Se registra en `correo_enviado`, no se envía |

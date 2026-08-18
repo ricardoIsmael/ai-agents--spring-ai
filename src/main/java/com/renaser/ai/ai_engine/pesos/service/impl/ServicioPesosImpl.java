@@ -2,8 +2,10 @@ package com.renaser.ai.ai_engine.pesos.service.impl;
 
 import com.renaser.ai.ai_engine.ai.exception.ResourceNotFoundException;
 import com.renaser.ai.ai_engine.auditoria.service.ServicioAuditoria;
+import com.renaser.ai.ai_engine.perfilintegral.entity.Criterio;
 import com.renaser.ai.ai_engine.perfilintegral.entity.PesoCriterio;
 import com.renaser.ai.ai_engine.perfilintegral.entity.PesoDimension;
+import com.renaser.ai.ai_engine.perfilintegral.repository.CriterioRepository;
 import com.renaser.ai.ai_engine.perfilintegral.repository.PesoCriterioRepository;
 import com.renaser.ai.ai_engine.perfilintegral.repository.PesoDimensionRepository;
 import com.renaser.ai.ai_engine.pesos.dto.DtosPesos.*;
@@ -38,6 +40,7 @@ public class ServicioPesosImpl implements ServicioPesos {
     private final PesoComponentePerfilRepository pesosComponente;
     private final PesoDimensionRepository pesosDimension;
     private final PesoCriterioRepository pesosCriterio;
+    private final CriterioRepository criterios;
     private final PesosMapper mapper;
     private final ServicioAuditoria auditoria;
 
@@ -156,11 +159,18 @@ public class ServicioPesosImpl implements ServicioPesos {
                 filas.stream().map(PesoDimension::getPeso).toList(), BigDecimal.valueOf(100),
                 "Los pesos de dimensión del nivel " + nivel + " deben sumar 100"));
 
-        Map<String, List<PesoCriterio>> criterioPorNivel = pesosCriterio.findByVersionPesosId(versionId).stream()
-                .collect(Collectors.groupingBy(PesoCriterio::getNivelPuestoCodigo));
-        criterioPorNivel.forEach((nivel, filas) -> exigirSuma(
+        // Los criterios se agrupan por nivel Y POR ETAPA. Cada etapa tiene su propia rúbrica
+        // que suma 100 por sí sola -los ocho del currículum, los diez de la simulación, las
+        // nueve de la validación-, así que agrupar solo por nivel sumaría 300 y rechazaría una
+        // versión perfectamente válida.
+        Map<String, List<PesoCriterio>> criterioPorNivelYEtapa = pesosCriterio.findByVersionPesosId(versionId)
+                .stream()
+                .collect(Collectors.groupingBy(pc -> pc.getNivelPuestoCodigo() + " · "
+                        + criterios.findById(pc.getCriterioId())
+                                .map(Criterio::getEtapaCodigo).orElse("(sin etapa)")));
+        criterioPorNivelYEtapa.forEach((nivelYEtapa, filas) -> exigirSuma(
                 filas.stream().map(PesoCriterio::getPeso).toList(), BigDecimal.valueOf(100),
-                "Los pesos de criterio del nivel " + nivel + " deben sumar 100"));
+                "Los pesos de criterio de " + nivelYEtapa + " deben sumar 100"));
     }
 
     private void exigirSuma(List<BigDecimal> pesos, BigDecimal esperado, String mensaje) {

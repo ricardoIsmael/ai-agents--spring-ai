@@ -9,6 +9,9 @@ import com.renaser.ai.ai_engine.perfilintegral.controller.EvaluacionPortalContro
 import com.renaser.ai.ai_engine.perfilintegral.controller.PlantillasEvaluacionController;
 import com.renaser.ai.ai_engine.pesos.controller.PesosController;
 import com.renaser.ai.ai_engine.prueba.controller.CalificacionPruebaController;
+import com.renaser.ai.ai_engine.simulacion.controller.SimulacionPanelController;
+import com.renaser.ai.ai_engine.simulacion.controller.SimulacionPortalController;
+import com.renaser.ai.ai_engine.validacion.controller.ValidacionPanelController;
 import com.renaser.ai.ai_engine.prueba.controller.PlantillaPruebaController;
 import com.renaser.ai.ai_engine.prueba.controller.PruebaPortalController;
 import com.renaser.ai.ai_engine.portal.controller.PortalController;
@@ -64,7 +67,10 @@ import java.util.regex.Pattern;
         PruebaPortalController.class,
         PlantillaPruebaController.class,
         CalificacionPruebaController.class,
-        DecisionPanelController.class})
+        DecisionPanelController.class,
+        SimulacionPanelController.class,
+        SimulacionPortalController.class,
+        ValidacionPanelController.class})
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @Slf4j
 public class ManejadorErrores {

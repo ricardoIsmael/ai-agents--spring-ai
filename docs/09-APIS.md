@@ -1,8 +1,8 @@
 # Las APIs del sistema
 
 Sistema de selección de personal — Renaser Consulting
-Versión 1.2 · 2026-08-17 · Cubre el **hito 1**, la evaluación del **hito 2**, y la prueba del
-puesto y la decisión final del **hito 3**
+Versión 1.3 · 2026-08-18 · Cubre **las cinco etapas del embudo**: postulación, Perfil Integral,
+prueba del puesto, simulación de trabajo, validación práctica y decisión final
 
 Este documento explica las APIs para quien las va a consumir: el frontend de RENASER OS y el
 portal del candidato. **La referencia viva es Swagger**, en `http://localhost:8080/swagger-ui.html`
@@ -141,6 +141,49 @@ la postulación en el acto (`NO_CONTINUA`), con la regla exacta escrita en su hi
 **El portal del candidato es `/api/v1/portal/prueba/{codigo}`**: ver, iniciar (arranca el
 reloj), responder, subir entregables y entregar. Mismas reglas que la evaluación: nada de
 lo interno viaja, y una prueba ajena responde 404.
+
+### Simulación de trabajo
+
+| Método y ruta | Qué hace | Permiso |
+|---|---|---|
+| GET/POST `/sesiones-simulacion` | Las sesiones con fecha y cupo. Publicar una mueve a quien estaba esperando | `crear_sesiones_simulacion` |
+| POST `/sesiones-simulacion/{id}/cupo` · `/cancelacion` | Ampliar o cancelar. Al cancelar se avisa a los inscritos | `crear_sesiones_simulacion` |
+| POST `/sesiones-simulacion/{id}/responsables` | Quién conduce la sesión | `crear_sesiones_simulacion` |
+| GET/POST `/sesiones-simulacion/{id}/informacion-critica` | Qué debería preguntar un candidato fuerte | `definir_informacion_critica` |
+| GET/POST `/inscripciones/{id}/marcas` | Los diez eventos observables, marcados en vivo | `marcar_eventos_simulacion` |
+| POST `/inscripciones/{id}/asistencia` | Si asistió. Si no, vuelve a la bandeja del equipo | `marcar_asistencia` |
+| POST `/postulaciones/{id}/ausencia-simulacion` | Qué hacer con quien faltó: otra fecha o cerrar | `decidir_sobre_ausente` |
+| POST `/postulaciones/{id}/simulacion/...` | Poner notas y ponderarlas, como en la prueba | `calificar_simulacion` |
+| GET/POST `/postulaciones/{id}/conversacion-final` | Las 3-5 preguntas y lo que se respondió | `hacer_conversacion_final` |
+
+**El portal del candidato es `/portal/simulacion/{codigo}`**: ver las fechas de su vacante que
+tengan cupo, elegir una, y consultar la que eligió.
+
+⚠️ **Tres reglas mueven al candidato solo**, y son el único punto del sistema donde el estado de
+una postulación depende de otra tabla: publicar una sesión o ampliar su cupo mueve a quien
+esperaba; llenar la última devuelve a quien no se inscribió; cancelar devuelve a los inscritos.
+**Faltar a la sesión no reinscribe solo** — eso lo decide una persona.
+
+**Solo se registra lo que se hizo, nunca lo que se supone que pensó.** El evento «detectó el
+bloqueo» no existe: quedan «apareció el cambio» y «lo abrió», que son dos actos observables.
+
+### Validación práctica
+
+| Método y ruta | Qué hace | Permiso |
+|---|---|---|
+| GET `/postulaciones/{id}/validacion` | El periodo, su modalidad y sus fechas | `completar_metricas_validacion` |
+| POST `/postulaciones/{id}/validacion/habilitacion` | Modalidad y días. **El trabajo real exige la figura contractual** | `habilitar_validacion` |
+| POST `/postulaciones/{id}/validacion/inicio` | Arrancar: fija inicio y fin | `iniciar_validacion` |
+| GET/POST `/postulaciones/{id}/validacion/metricas` | Las nueve métricas, con de dónde salió cada valor | `completar_metricas_validacion` |
+| POST `/postulaciones/{id}/validacion/cierre` | Ponderar y pasar a la decisión | `cerrar_validacion` |
+
+⚠️ **No se pone a nadie a trabajar de verdad sin figura contractual registrada.** La otra
+modalidad —simulación extendida, sin trabajo productivo— no la necesita y se puede usar desde
+el primer día.
+
+**Quién facilita y quién completa métricas es configurable** desde
+`PUT /panel/parametros/{codigo}`: `roles_facilitador_simulacion` y
+`roles_completan_metricas_validacion`. No hace falta un rol nuevo ni tocar código.
 
 ### La decisión final (hito 3)
 

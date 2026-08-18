@@ -2,6 +2,7 @@ package com.renaser.ai.ai_engine.comun.programado;
 
 import com.renaser.ai.ai_engine.perfilintegral.service.ServicioEvaluacion;
 import com.renaser.ai.ai_engine.prueba.service.ServicioPrueba;
+import com.renaser.ai.ai_engine.validacion.service.ServicioValidacion;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,6 +28,7 @@ public class SondeoVencimientos {
 
     private final ServicioEvaluacion evaluacion;
     private final ServicioPrueba prueba;
+    private final ServicioValidacion validacion;
 
     @Scheduled(fixedDelayString = "${app.sondeo.periodo-ms:60000}")
     public void ejecutar() {
@@ -39,6 +41,13 @@ public class SondeoVencimientos {
             prueba.entregarVencidos();
         } catch (Exception e) {
             log.error("El sondeo de pruebas vencidas falló, se reintenta en el próximo ciclo", e);
+        }
+        try {
+            // Un periodo de validación que se acaba no cierra la postulación: la pasa a
+            // esperar a que una persona complete las métricas que no se alimentaron solas.
+            validacion.terminarVencidos();
+        } catch (Exception e) {
+            log.error("El sondeo de validaciones vencidas falló, se reintenta en el próximo ciclo", e);
         }
     }
 }

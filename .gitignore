@@ -35,14 +35,11 @@ build/
 ### Secrets (nunca commitear) ###
 application-secrets.yaml
 
-<<<<<<< HEAD
 ### Graphify (cache local, se regenera con `graphify .`) ###
 graphify-out/
 
 ### Almacen de archivos subidos en desarrollo local ###
-=======
 ### Almacen de archivos de candidatos (nunca commitear) ###
 # Aqui aterrizan los CV que sube la gente: datos personales reales.
 # La ruta la fija app.archivos.ruta y en local apunta aqui.
->>>>>>> b664098 (Cambios de manejo de errores)
 almacen-archivos/

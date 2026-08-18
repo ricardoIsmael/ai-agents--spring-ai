@@ -19,6 +19,8 @@ import com.renaser.ai.ai_engine.usuario.entity.Usuario;
 import com.renaser.ai.ai_engine.usuario.repository.UsuarioRepository;
 import com.renaser.ai.ai_engine.postulacion.service.ServicioPostulacionesPanel;
 import com.renaser.ai.ai_engine.prueba.service.ServicioPrueba;
+import com.renaser.ai.ai_engine.simulacion.service.ServicioDisponibilidadSimulacion;
+import com.renaser.ai.ai_engine.validacion.service.ServicioValidacion;
 import com.renaser.ai.ai_engine.postulacion.dto.DtosPostulacion.*;
 import com.renaser.ai.ai_engine.postulacion.entity.*;
 import com.renaser.ai.ai_engine.postulacion.repository.*;
@@ -55,6 +57,8 @@ public class ServicioPostulacionesPanelImpl implements ServicioPostulacionesPane
     private final MaquinaEstados maquina;
     private final Permisos permisos;
     private final ServicioPrueba prueba;
+    private final ServicioValidacion validacion;
+    private final ServicioDisponibilidadSimulacion disponibilidad;
 
     @Override
     public List<FilaBandeja> bandeja(ContextoUsuario quien, String esperaA) {
@@ -123,12 +127,6 @@ public class ServicioPostulacionesPanelImpl implements ServicioPostulacionesPane
         maquina.transicionar(p, datos.estadoDestino(), quien, datos.motivo(), false, false, motivoCierre);
     }
 
-    // Las etapas que este sistema sabe atender hoy. Simulación y Validación están en el
-    // catálogo de 18 estados —el modelo completo las contempla— pero docs/08-ALCANCE-DEL-MVP.md
-    // las deja fuera de este hito por razones ajenas al código: logística de sesiones con
-    // cupo la primera, una figura contractual que Renaser no ha definido la segunda.
-    private static final Set<String> ETAPAS_CONSTRUIDAS = Set.of("PERFIL_INTEGRAL", "PRUEBA_PUESTO", "DECISION");
-
     @Override
     @Transactional
     public void confirmarAvance(ContextoUsuario quien, Long postulacionId, String motivo) {
@@ -137,17 +135,6 @@ public class ServicioPostulacionesPanelImpl implements ServicioPostulacionesPane
                 .orElseThrow(() -> new IllegalStateException(
                         "Desde " + p.getEstadoCodigo() + " no hay un avance que calcular: "
                                 + "usa una transición manual con motivo"));
-
-        // Si el cálculo aterriza en una etapa que no existe todavía, "confirmar avance" es la
-        // pregunta equivocada: no hay nada ahí que confirmar. La transición manual (mismo
-        // permiso, otro endpoint) sigue permitiendo saltar directo a Decisión con un motivo
-        // que explique por qué, tal como ya lo permite RF-121 para cualquier salto.
-        if (siguiente.getEtapaCodigo() != null && !ETAPAS_CONSTRUIDAS.contains(siguiente.getEtapaCodigo())) {
-            throw new IllegalStateException(
-                    "El siguiente paso calculado es " + siguiente.getCodigo() + ", de una etapa que "
-                            + "todavía no existe en el sistema. Usa una transición manual a DECISION_POR_CONFIRMAR "
-                            + "con el motivo de por qué se salta.");
-        }
 
         // Al entrar a su turno para la prueba, se le crea el intento: mismo patrón que la
         // evaluación del hito 2, la versión de la plantilla queda fijada aquí y no cambia
@@ -162,7 +149,21 @@ public class ServicioPostulacionesPanelImpl implements ServicioPostulacionesPane
             prueba.crearAlEntrar(quien.organizacionId(), p.getId(), vacante.getVersionPlantillaPruebaId());
         }
 
+        // Al entrar a validación se crea su periodo, en POR_HABILITAR: alguien tiene que
+        // decidir la modalidad —y, si es trabajo real, registrar la figura contractual—
+        // antes de que empiece a correr.
+        if ("VALIDACION_POR_HABILITAR".equals(siguiente.getCodigo())) {
+            validacion.crearAlEntrar(p.getId(), quien.organizacionId());
+        }
+
         maquina.transicionar(p, siguiente.getCodigo(), quien, motivo, false, false, null);
+
+        // Entrar a simulación no crea nada: la inscripción la elige el candidato. Lo que sí
+        // hace falta es mirar si ya hay una sesión con cupo para su vacante, porque de eso
+        // depende si se queda esperando o puede elegir ya.
+        if ("SIMULACION_POR_HABILITAR".equals(siguiente.getCodigo())) {
+            disponibilidad.recalcularVacante(p.getOrganizacionId(), p.getVacanteId());
+        }
     }
 
     @Override

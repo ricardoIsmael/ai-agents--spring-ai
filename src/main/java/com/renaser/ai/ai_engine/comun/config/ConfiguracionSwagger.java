@@ -9,6 +9,9 @@ import com.renaser.ai.ai_engine.perfilintegral.controller.EvaluacionPortalContro
 import com.renaser.ai.ai_engine.perfilintegral.controller.PlantillasEvaluacionController;
 import com.renaser.ai.ai_engine.pesos.controller.PesosController;
 import com.renaser.ai.ai_engine.prueba.controller.CalificacionPruebaController;
+import com.renaser.ai.ai_engine.simulacion.controller.SimulacionPanelController;
+import com.renaser.ai.ai_engine.simulacion.controller.SimulacionPortalController;
+import com.renaser.ai.ai_engine.validacion.controller.ValidacionPanelController;
 import com.renaser.ai.ai_engine.prueba.controller.PlantillaPruebaController;
 import com.renaser.ai.ai_engine.prueba.controller.PruebaPortalController;
 import com.renaser.ai.ai_engine.portal.controller.PortalController;
@@ -60,7 +63,10 @@ public class ConfiguracionSwagger {
             PruebaPortalController.class,
             PlantillaPruebaController.class,
             CalificacionPruebaController.class,
-            DecisionPanelController.class);
+            DecisionPanelController.class,
+            SimulacionPanelController.class,
+            SimulacionPortalController.class,
+            ValidacionPanelController.class);
 
     private static final Set<String> PAQUETES = CONTROLADORES.stream()
             .map(c -> c.getPackage().getName())
