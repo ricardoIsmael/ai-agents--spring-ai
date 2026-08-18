@@ -6,7 +6,8 @@
 > [Qué cambia con el documento nuevo](CAMBIOS-DEL-DOCUMENTO-NUEVO.md).
 
 > **Documento de trabajo. Aquí solo vive lo que sigue sin respuesta.**
-> Lo que ya está decidido está en los documentos numerados y en `DECISIONES.md`.
+> Lo que ya está decidido está en los documentos numerados y en
+> [Qué documento manda](ANALISIS-DOCUMENTOS.md).
 > Este archivo se vacía solo: cada vez que algo se resuelve, sale de aquí.
 >
 > Última actualización: 2026-08-14
@@ -42,8 +43,10 @@ dominio mal configurado, caen en spam y se pierden candidatos que sí querían s
 un problema de configuración del dominio, no del sistema.
 
 **¿Dónde se despliega y cuánto se puede gastar?**
-Con Ollama corriendo en local el gasto por consulta desaparece, pero aparece el del
-servidor que lo aguante. Falta saber qué máquina hay disponible.
+Ya no hay modelo en local: desde el 18/08/2026 califica **DeepSeek** y busca por significado
+**Google Gemini**, los dos de fuera. Así que el gasto ya no es una máquina, es **cada
+consulta**, y sigue faltando el número que lo dimensiona: cuántas postulaciones llegan por
+vacante. Falta también un tope de gasto para las dos cuentas.
 
 **¿Cuánta gente de Renaser va a usar el panel y con qué frecuencia?**
 Cambia cuánto trabajo humano tolera el sistema. Si hay una sola persona operando, la

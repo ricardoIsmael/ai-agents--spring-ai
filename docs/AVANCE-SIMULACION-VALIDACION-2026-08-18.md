@@ -132,11 +132,15 @@ Lo que falta es operativo, y no lo resuelve programar:
 
 ### Del sistema completo
 
-- **Los cuatro agentes de IA** (currículum, respuestas abiertas, Perfil de Talento, prueba del
-  puesto) más el de simulación, que genera las preguntas de la conversación final. Los construirá
-  Ricardo. Hoy esas preguntas se registran a mano, en la misma tabla que usará el agente.
-- **La extracción y anonimización del CV**, requisito previo a que el primer agente pueda leer
-  un currículum.
+> **Al cierre del 18/08/2026 esta lista encogió.** Los tres agentes del Perfil Integral
+> —evidencia del currículum, evaluador, y potencial y riesgo— ya corren de verdad contra
+> DeepSeek, y con ellos entró la extracción y anonimización del currículum. Lo cuenta
+> [Calificación con IA](CALIFICACION-CON-IA.md). Queda lo de abajo.
+
+- **Los dos agentes que faltan**: el que califica la prueba del puesto y el que genera las
+  preguntas de la conversación final de la simulación. Existen como filas del catálogo, sin
+  instrucción sembrada ni clase. Hoy las dos cosas las hace una persona a mano, en las mismas
+  tablas que usarán los agentes.
 - **El contenido real de una prueba del puesto**, que quedó pendiente de que Renaser reescriba
   una en formato de dos horas.
 - Lo que está fuera del MVP por decisión ya tomada: Radar de Talento, seguimiento de desempeño a

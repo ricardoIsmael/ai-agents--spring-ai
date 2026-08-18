@@ -148,34 +148,33 @@ detectado.
 
 ## Lo que queda fuera, y por qué
 
-No todas las 20 tablas que se dejan fuera se dejan por el mismo motivo. La diferencia importa.
+> **Al 18/08/2026 los tres hitos están construidos, y dos cosas que estaban fuera entraron
+> igual: la simulación de trabajo y la validación práctica.** El embudo va de punta a punta.
+> Esta sección ya no describe el trabajo pendiente, sino lo que sigue sin construirse.
 
-### Está bloqueado, y no depende de nosotros
+### Ya no está fuera
+
+| Qué | Qué pasó |
+|---|---|
+| **Simulación de trabajo** (7 tablas + `sesion_responsable`) | Se construyó el 18/08. El facilitador no hizo falta como rol nuevo: quién puede facilitar es un parámetro editable desde el panel |
+| **Validación práctica** | Se construyó el 18/08. La figura contractual sigue sin definirse, pero eso ya no bloquea: solo impide habilitar la modalidad de trabajo productivo. La no productiva se usa desde el primer día |
+
+### Sigue fuera, por decisión ya tomada
 
 | Qué | Por qué |
 |---|---|
-| **Validación práctica** | Renaser todavía no ha definido con qué figura contractual trabaja alguien durante ese periodo. Sin eso no se puede habilitar la modalidad productiva |
+| **Radar de Talento** (3 tablas) | Decidido el 15/08. Ni las tablas se crearon: entra cuando haga falta. Es el caso de uso de pgvector, que hoy está instalado y sin usar en selección |
+| **Seguimiento de desempeño** (2 tablas) | Es la medición de los 90 días. No cabe en la vida del MVP. **Ojo: el gancho tampoco está puesto**, así que cuando entre habrá que añadirlo |
 
-### Es caro de operar, no de programar
+### Sigue fuera, y el cliente lo notaría
 
-| Qué | Por qué |
-|---|---|
-| **Simulación de trabajo** (7 tablas) | Necesita sesiones con fecha y cupo, un facilitador, una sala y gente coordinada. El código no es lo difícil: lo difícil es montar la logística para probar una idea |
-
-### Ya se había acordado dejarlo para después
-
-| Qué | Por qué |
-|---|---|
-| **Radar de Talento** (3 tablas) | Decidido el 15/08. Las tablas quedan previstas y vacías |
-| **Seguimiento de desempeño** (2 tablas) | Es la medición de los 90 días. No cabe en la vida del MVP, pero **el gancho se deja puesto** |
-
-### Lo pidió el cliente por escrito, y notaría que falta
-
-Estas **no las decidimos nosotros**. Están en «Decisiones».
+Estas **no las decidimos nosotros**: están en «Decisiones», más abajo.
 
 - Evaluador de Estándar, y su opinión escrita
 - La repregunta cuando una respuesta es superficial
-- La reutilización de respuestas entre puestos de familias afines
+- La reutilización de respuestas entre puestos de familias afines. El gancho sí está puesto:
+  `evaluacion.reutiliza_de_evaluacion_id` existe y espera la regla de qué familias son afines
+- El módulo psicométrico propio, que Renaser todavía no ha decidido si se construye
 
 ---
 
@@ -245,7 +244,8 @@ Los tres primeros son también los del paso 0.
 | 2 o 3 descripciones reales de oferta de empleo | Escribir la rúbrica del currículum con casos reales y no a ciegas |
 | El marco de Renaser sobre no victimismo, no culpa y no vergüenza, por escrito | Convertirlo en criterios que se puedan observar |
 | El dominio de correo de Renaser, bien configurado | Si los avisos caen en spam, se pierden candidatos que sí querían seguir |
-| Qué máquina hay para el servidor | El modelo de IA corre en local: no hay gasto por consulta, pero sí hace falta hardware |
+| El texto de consentimiento que nombre a DeepSeek y a Google | **Desde el 18/08/2026 la IA es de fuera y ya lee currículums.** Sin ese texto no puede pasar por ahí el primer candidato real |
+| Un tope de gasto para DeepSeek y para Google | La IA ya no corre en una máquina de Renaser: **cada consulta se paga**. Sin saber cuántas postulaciones llegan por vacante, el gasto no se puede estimar |
 
 ---
 
@@ -275,8 +275,11 @@ Lo que hay que hacer fuera del código, en orden:
    finalización— antes de encender el hito 1.
 3. **Llevar las cuatro decisiones de arriba a Renaser.** Las cuatro son suyas.
 4. **Conseguir el dominio de correo** y configurarlo, o los avisos caen en spam.
-5. **Confirmar qué servidor hay** para el modelo de IA.
-6. **Avisar a quien mantiene los mockups** de qué pantallas entran en cada hito, porque el
+5. **Aprobar el texto de consentimiento** que nombre a DeepSeek y a Google, antes de que pase
+   por ahí el primer candidato real. Hay un borrador en
+   [BORRADOR-CONSENTIMIENTO-v1.1.md](BORRADOR-CONSENTIMIENTO-v1.1.md).
+6. **Poner un tope de gasto** a las dos cuentas de IA, que ahora cobran por consulta.
+7. **Avisar a quien mantiene los mockups** de qué pantallas entran en cada hito, porque el
    inventario de pantallas todavía describe la versión anterior.
 
 ---

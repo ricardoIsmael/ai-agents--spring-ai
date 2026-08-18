@@ -216,10 +216,17 @@ escritura más importante de un flujo.
 la base (`correo_enviado`), pero el envío real espera a que Renaser confirme su dominio de
 correo. Cuando exista, se enchufa el transporte y nada más cambia.
 
-**La prueba del puesto todavía no vive aquí.** Hoy se manda como PDF y se entrega por fuera,
-como se venía haciendo. El sistema solo registra el movimiento del candidato por esa etapa, con
-su motivo. La prueba dentro del sistema —cronómetro en el servidor, cambio a mitad y entregables
-subidos— es el hito 3 (ver «Alcance del MVP»). Lo mismo vale para la simulación y la validación.
+**Las tres últimas etapas ya viven aquí, pero les falta contenido** (18/08/2026). La mecánica
+está construida y se puede llamar; lo que todavía no existe es lo que va dentro:
+
+| Etapa | Qué ya funciona | Qué falta |
+|---|---|---|
+| Prueba del puesto | El cronómetro corre en el servidor, el cambio aparece en un minuto sorteado, el candidato sube sus entregables y entrega | **La califica una persona**, criterio por criterio: el agente que lo haría no está escrito. Y falta el enunciado real de una prueba en formato de dos horas, que lo escribe Renaser |
+| Simulación de trabajo | Sesiones con fecha y cupo, el candidato elige la suya, el facilitador marca los diez eventos y se califica | **El contenido de la sesión**: el enunciado del encargo y la matriz de información crítica —qué se le oculta al candidato y debería preguntar— los escribe Renaser, sesión por sesión. Y las preguntas de la conversación final se escriben a mano, porque el agente que las generaría tampoco está |
+| Validación práctica | Habilitar la modalidad, arrancar el periodo, cargar las nueve métricas y cerrar | **Las métricas se cargan a mano.** El campo dice de dónde salió cada valor y hoy todas dicen `PERSONA`; que RENASER OS las alimente solo es la integración que falta |
+
+Ninguna de esas faltas frena a la de al lado: un candidato puede recorrer las cinco etapas de
+punta a punta hoy mismo, con personas poniendo las notas.
 
 **El id público de una postulación es su `uuid`,** no el número interno. Es lo que ve el
 candidato y lo que viaja en sus rutas.

@@ -25,7 +25,7 @@ llama por su API. Son dos servicios separados: **no comparten base de datos**.
         |                                |
         +----------------+---------------+
                          |
-                    Next.js
+                 React + Vite
                          |
                    API REST / JSON
                          |
@@ -52,7 +52,7 @@ Se deja en una cola y se atiende aparte. Por eso hay una cola en el dibujo.
 | | |
 |---|---|
 | Backend | Java 25 con Spring Boot 4.1 |
-| Frontend | Next.js, el que ya existe |
+| Frontend | React con Vite, el de RENASER OS que ya existe |
 | Base de datos | PostgreSQL propio, con la extensión pgvector |
 | Archivos | Almacén propio, fuera de la base de datos |
 | Cola de trabajo en segundo plano | RabbitMQ |
@@ -66,11 +66,12 @@ Renaser aceptó que los datos de candidatos salgan hacia ellos (decisión del 18
 eligió así porque un modelo propio exige una máquina cara y dedicada, y la calidad de los de
 fuera es mejor.
 
-⚠️ **Los textos de consentimiento todavía no nombran a ninguna de las dos empresas.** Hoy no
-hay daño, porque la selección de personal aún no llama a ningún modelo y no sale el dato de
-nadie. Deja de ser verdad en cuanto funcionen los agentes que califican. **Renaser tiene que
-aprobar un texto nuevo antes de que la IA lea al primer candidato real**, y ese texto tiene
-que decir qué se manda y a quién.
+⚠️ **Los textos de consentimiento todavía no nombran a ninguna de las dos empresas, y esto ya
+es urgente** (18/08/2026). Antes no rompía nada porque la IA no leía a nadie; **ahora sí lee**:
+los tres agentes del Perfil Integral corren de verdad y el currículum sale hacia DeepSeek,
+anonimizado —sin edad, sexo ni estado civil—. **Renaser tiene que aprobar un texto que nombre a
+las dos empresas y diga qué se les manda, antes de que pase por ahí el primer candidato real.**
+Hay un borrador en [BORRADOR-CONSENTIMIENTO-v1.1.md](BORRADOR-CONSENTIMIENTO-v1.1.md).
 
 ### Cuánta gente lo va a usar
 
@@ -92,7 +93,8 @@ rehacerlo.
 
 **RNF-01** El backend se construye en **Java con Spring Boot**.
 
-**RNF-02** El frontend es el proyecto **Next.js** de RENASER OS que ya existe.
+**RNF-02** El frontend es el proyecto de RENASER OS que ya existe, hecho en **React con Vite**.
+Sus pantallas de selección de personal se están construyendo desde el 18/08/2026.
 
 **RNF-03** Los dos se comunican por **API REST con JSON**. Son proyectos separados: cada uno
 se despliega por su cuenta y el contrato entre ellos es la API.
@@ -423,7 +425,8 @@ ajuste automático que nunca tendría suficiente información para funcionar.
 | API de RENASER OS: tareas, tiempos y bloqueos | **Existe** | Las métricas de la validación se completan a mano |
 | API de RENASER OS: desempeño 30/90/180 | **Existe** | El seguimiento posterior queda vacío |
 | Módulo psicométrico propio | **No construido** | Su 5% se reparte entre las otras dos partes |
-| Servidor que aguante el modelo local | **Sin confirmar** | Sin máquina suficiente, calificar tarda de más |
+| DeepSeek, que califica | **En uso desde el 18/08/2026** | Nadie se queda sin nota: el trabajo se reintenta y la postulación espera. Pero **cada consulta se paga**, y sin saldo o sin clave válida no avanza |
+| Google Gemini, que busca por significado | **En uso** | La búsqueda por parecido queda vacía. También se paga por consulta |
 | Dominio de correo de Renaser | **Sin confirmar** | Los correos pueden caer en spam |
 | Figura contractual de la validación productiva | **Sin definir** | Solo se puede usar la modalidad no productiva |
 
