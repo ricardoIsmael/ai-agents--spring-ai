@@ -41,4 +41,8 @@ public interface PostulacionRepository extends JpaRepository<Postulacion, Long> 
     List<Object[]> embudo(@Param("vacanteId") Long vacanteId);
 
     List<Postulacion> findByVacanteIdOrderByCreadoEnDesc(Long vacanteId);
+
+    // El sondeo cierra desde aquí las evaluaciones y las pruebas vencidas: la
+    // postulación se conoce por el intento, no al revés.
+    Optional<Postulacion> findByEvaluacionId(Long evaluacionId);
 }

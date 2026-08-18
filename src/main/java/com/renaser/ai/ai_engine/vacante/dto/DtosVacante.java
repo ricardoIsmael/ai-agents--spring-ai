@@ -42,4 +42,10 @@ public final class DtosVacante {
     // El cuerpo de cerrar una vacante: el mismo {"motivo": "..."} de siempre. Tiene su propio
     // record y no comparte el de solicitudes para que cada dominio sea dueño de sus contratos.
     public record CerrarVacante(@NotBlank String motivo) {}
+
+    // Qué evaluación responderá quien postule a esta vacante
+    public record AsignarPlantilla(@NotNull Long plantillaEvaluacionId) {}
+
+    // Qué versión de la prueba del puesto rendirá quien llegue a esa etapa
+    public record AsignarPlantillaPrueba(@NotNull Long versionPlantillaPruebaId) {}
 }

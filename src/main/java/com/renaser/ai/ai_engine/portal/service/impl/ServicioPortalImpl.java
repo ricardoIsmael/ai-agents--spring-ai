@@ -29,6 +29,7 @@ import com.renaser.ai.ai_engine.seguridad.dto.*;
 import com.renaser.ai.ai_engine.seguridad.exception.CredencialesInvalidasException;
 import com.renaser.ai.ai_engine.seguridad.exception.DemasiadosIntentosException;
 import com.renaser.ai.ai_engine.seguridad.service.*;
+import com.renaser.ai.ai_engine.perfilintegral.service.ServicioEvaluacion;
 import com.renaser.ai.ai_engine.vacante.entity.*;
 import com.renaser.ai.ai_engine.vacante.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -54,7 +55,9 @@ public class ServicioPortalImpl implements ServicioPortal {
     private final ConsentimientoRepository consentimientos;
     private final SolicitudBorradoRepository solicitudesBorrado;
     private final VacanteRepository vacantes;
+    private final PuestoRepository puestos;
     private final RequisitoObjetivoRepository requisitos;
+    private final ServicioEvaluacion evaluaciones;
     private final PostulacionRepository postulaciones;
     private final TransicionEstadoRepository transiciones;
     private final EstadoPostulacionRepository estados;
@@ -270,6 +273,17 @@ public class ServicioPortalImpl implements ServicioPortal {
             maquina.transicionar(postulacion, "NO_CONTINUA", null,
                     "Requisito objetivo no cumplido: " + reglas, true, false, "REQUISITO_OBJETIVO");
         } else {
+            // Su evaluación se crea aquí, no cuando entre a responderla: así queda atada a la
+            // versión del banco que estaba publicada el día que postuló. Sin esto la
+            // postulación quedaría esperando algo que el candidato no tendría cómo hacer.
+            Puesto puesto = puestos.findById(vacante.getPuestoId())
+                    .orElseThrow(() -> new IllegalStateException(
+                            "La vacante apunta a un puesto que no existe"));
+            postulacion.setEvaluacionId(evaluaciones.crearAlPostular(
+                    quien.organizacionId(), quien.usuarioId(),
+                    vacante.getPlantillaEvaluacionId(), puesto.getNivelPuestoCodigo()));
+            postulaciones.save(postulacion);
+
             maquina.transicionar(postulacion, "PERFIL_TURNO_CANDIDATO", null, null, true, false, null);
         }
         return postulacion.getUuid();

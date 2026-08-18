@@ -154,6 +154,26 @@ public class FlujoHito1IT {
                 "{\"descripcion\":\"Disponibilidad en Arequipa\",\"regla\":\"Reside o puede trasladarse a Arequipa\"}")
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(), "id"));
 
+        // Sin plantilla de evaluación no se puede publicar: quien postulara quedaría esperando
+        // un examen que no existe. El error sale aquí, no en la cara del candidato.
+        // (Crear una vacante no asigna plantilla; se quita por si acaso para probar la regla.)
+        jdbc.update("update vacante set plantilla_evaluacion_id = null where id = ?", vacanteId);
+        conToken(post("/api/v1/panel/vacantes/" + vacanteId + "/publicacion"), tokenEquipo, null)
+                .andExpect(status().isConflict());
+
+        Long plantillaId = jdbc.queryForObject(
+                "select id from plantilla_evaluacion where nivel_puesto_codigo = 'EJECUCION'", Long.class);
+        conToken(post("/api/v1/panel/vacantes/" + vacanteId + "/plantilla-evaluacion"), tokenEquipo,
+                "{\"plantillaEvaluacionId\": %d}".formatted(plantillaId))
+                .andExpect(status().isOk());
+
+        // La prueba del puesto también es obligatoria antes de publicar (RF-73). Se arma la
+        // mínima válida: una plantilla, una versión, sus 8+3 preguntas y una rúbrica que suma 100.
+        Long versionPruebaId = armarUnaPruebaValida(tokenEquipo);
+        conToken(post("/api/v1/panel/vacantes/" + vacanteId + "/plantilla-prueba"), tokenEquipo,
+                "{\"versionPlantillaPruebaId\": %d}".formatted(versionPruebaId))
+                .andExpect(status().isOk());
+
         conToken(post("/api/v1/panel/vacantes/" + vacanteId + "/publicacion"), tokenEquipo, null)
                 .andExpect(status().isOk());
 
@@ -326,6 +346,46 @@ public class FlujoHito1IT {
     }
 
     // ============ ayudas ============
+
+    // La mínima prueba del puesto publicable: 8 universales + 3 específicas (RF-83), y una
+    // rúbrica de un solo criterio que ya suma 100. No prueba el hito 3 a fondo -eso lo hace
+    // FlujoPruebaIT-, solo lo que hace falta para que una vacante de este flujo pueda publicarse.
+    private Long armarUnaPruebaValida(String token) throws Exception {
+        long plantillaId = Long.parseLong(leer(conToken(post("/api/v1/panel/plantillas-prueba"), token,
+                "{\"nombre\":\"Prueba genérica\"}")
+                .andReturn().getResponse().getContentAsString(), "id"));
+        long versionId = Long.parseLong(leer(conToken(
+                post("/api/v1/panel/plantillas-prueba/" + plantillaId + "/versiones"), token, """
+                {"enunciado":"Resuelve el caso propuesto","modalidad":"CRONOMETRADA",
+                 "duracionMinutos":90,"minutoCambioMin":30,"minutoCambioMax":50,"minutosExtra":10}""")
+                .andReturn().getResponse().getContentAsString(), "id"));
+
+        for (int i = 0; i < 8; i++) {
+            String codigo = "UNIV_H1_" + i;
+            long id = Long.parseLong(leer(conToken(post("/api/v1/panel/plantillas-prueba/preguntas"), token,
+                    "{\"codigo\":\"%s\",\"enunciado\":\"Pregunta universal %d\",\"tipo\":\"UNIVERSAL\"}"
+                            .formatted(codigo, i))
+                    .andReturn().getResponse().getContentAsString(), "id"));
+            conToken(post("/api/v1/panel/plantillas-prueba/versiones/" + versionId + "/preguntas"), token,
+                    "{\"preguntaPruebaId\": %d}".formatted(id)).andExpect(status().isOk());
+        }
+        for (int i = 0; i < 3; i++) {
+            String codigo = "ESP_H1_" + i;
+            long id = Long.parseLong(leer(conToken(post("/api/v1/panel/plantillas-prueba/preguntas"), token,
+                    "{\"codigo\":\"%s\",\"enunciado\":\"Pregunta específica %d\",\"tipo\":\"ESPECIFICA\"}"
+                            .formatted(codigo, i))
+                    .andReturn().getResponse().getContentAsString(), "id"));
+            conToken(post("/api/v1/panel/plantillas-prueba/versiones/" + versionId + "/preguntas"), token,
+                    "{\"preguntaPruebaId\": %d}".formatted(id)).andExpect(status().isOk());
+        }
+        conToken(post("/api/v1/panel/plantillas-prueba/versiones/" + versionId + "/rubrica"), token, """
+                {"codigo":"RESULTADO_H1","nombre":"Resultado","puntos":100,"metodoVerificacion":"PERSONA"}""")
+                .andExpect(status().isCreated());
+
+        conToken(post("/api/v1/panel/plantillas-prueba/versiones/" + versionId + "/publicacion"), token, null)
+                .andExpect(status().isOk());
+        return versionId;
+    }
 
     private org.springframework.test.web.servlet.ResultActions conToken(
             org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder peticion,

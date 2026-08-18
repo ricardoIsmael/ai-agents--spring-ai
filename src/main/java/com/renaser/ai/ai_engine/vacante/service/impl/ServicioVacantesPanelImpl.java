@@ -4,8 +4,12 @@ import com.renaser.ai.ai_engine.ai.exception.ResourceNotFoundException;
 import com.renaser.ai.ai_engine.auditoria.service.ServicioAuditoria;
 import com.renaser.ai.ai_engine.vacante.service.ServicioVacantesPanel;
 import com.renaser.ai.ai_engine.vacante.dto.DtosVacante.*;
+import com.renaser.ai.ai_engine.perfilintegral.entity.PlantillaEvaluacion;
+import com.renaser.ai.ai_engine.perfilintegral.repository.PlantillaEvaluacionRepository;
 import com.renaser.ai.ai_engine.pesos.entity.VersionPesos;
 import com.renaser.ai.ai_engine.pesos.repository.VersionPesosRepository;
+import com.renaser.ai.ai_engine.prueba.entity.VersionPlantillaPrueba;
+import com.renaser.ai.ai_engine.prueba.repository.VersionPlantillaPruebaRepository;
 import com.renaser.ai.ai_engine.seguridad.dto.ContextoUsuario;
 import com.renaser.ai.ai_engine.solicitud.entity.SolicitudTalento;
 import com.renaser.ai.ai_engine.solicitud.repository.SolicitudTalentoRepository;
@@ -28,6 +32,8 @@ public class ServicioVacantesPanelImpl implements ServicioVacantesPanel {
     private final RequisitoObjetivoRepository requisitos;
     private final SolicitudTalentoRepository solicitudes;
     private final VersionPesosRepository versionesPesos;
+    private final PlantillaEvaluacionRepository plantillas;
+    private final VersionPlantillaPruebaRepository versionesPrueba;
     private final ServicioAuditoria auditoria;
 
     // ============ Puestos ============
@@ -203,11 +209,74 @@ public class ServicioVacantesPanelImpl implements ServicioVacantesPanel {
         if (!"BORRADOR".equals(vacante.getEstado())) {
             throw new IllegalStateException("Solo se publica una vacante en borrador; está " + vacante.getEstado());
         }
+        // Sin plantilla no hay con qué armar la evaluación de quien postule. El error tiene
+        // que salir aquí, al publicar, y no en la cara del primer candidato.
+        if (vacante.getPlantillaEvaluacionId() == null) {
+            throw new IllegalStateException(
+                    "Antes de publicar hay que elegir la plantilla de evaluación de esta vacante");
+        }
+        // "Es obligatoria para todo puesto" (RF-73): mismo motivo que la evaluación.
+        if (vacante.getVersionPlantillaPruebaId() == null) {
+            throw new IllegalStateException(
+                    "Antes de publicar hay que elegir la prueba del puesto de esta vacante");
+        }
         vacante.setEstado("PUBLICADA");
         vacante.setPublicadaEn(Instant.now());
         vacantes.save(vacante);
         auditoria.registrar(quien.organizacionId(), quien, "publicar_vacante",
                 "vacante", id, Map.of("estado", "BORRADOR"), Map.of("estado", "PUBLICADA"), null);
+    }
+
+    @Override
+    @Transactional
+    public void asignarPlantillaEvaluacion(ContextoUsuario quien, Long id, Long plantillaEvaluacionId) {
+        Vacante vacante = laDeLaOrganizacion(quien, id);
+        PlantillaEvaluacion plantilla = plantillas
+                .findByIdAndOrganizacionId(plantillaEvaluacionId, quien.organizacionId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Plantilla de evaluación", "id", plantillaEvaluacionId));
+        if (!"PUBLICADA".equals(plantilla.getEstado())) {
+            throw new IllegalStateException(
+                    "Esa plantilla todavía está en borrador: solo se puede usar una publicada");
+        }
+        // El nivel tiene que cuadrar: una evaluación de Dirección no sirve para un puesto de
+        // ejecución, ni las preguntas ni los pesos.
+        Puesto puesto = puestos.findById(vacante.getPuestoId())
+                .orElseThrow(() -> new IllegalStateException("La vacante apunta a un puesto que no existe"));
+        if (!puesto.getNivelPuestoCodigo().equals(plantilla.getNivelPuestoCodigo())) {
+            throw new IllegalArgumentException("La plantilla es de nivel "
+                    + plantilla.getNivelPuestoCodigo() + " y el puesto es de nivel "
+                    + puesto.getNivelPuestoCodigo());
+        }
+
+        Long anterior = vacante.getPlantillaEvaluacionId();
+        vacante.setPlantillaEvaluacionId(plantillaEvaluacionId);
+        vacantes.save(vacante);
+        auditoria.registrar(quien.organizacionId(), quien, "asignar_plantilla_evaluacion",
+                "vacante", id,
+                anterior == null ? null : Map.of("plantillaEvaluacionId", String.valueOf(anterior)),
+                Map.of("plantillaEvaluacionId", String.valueOf(plantillaEvaluacionId)), null);
+    }
+
+    @Override
+    @Transactional
+    public void asignarPlantillaPrueba(ContextoUsuario quien, Long id, Long versionPlantillaPruebaId) {
+        Vacante vacante = laDeLaOrganizacion(quien, id);
+        VersionPlantillaPrueba version = versionesPrueba.findById(versionPlantillaPruebaId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Versión de prueba", "id", versionPlantillaPruebaId));
+        if (!"PUBLICADA".equals(version.getEstado())) {
+            throw new IllegalStateException(
+                    "Esa versión todavía está en borrador: solo se puede usar una publicada");
+        }
+
+        Long anterior = vacante.getVersionPlantillaPruebaId();
+        vacante.setVersionPlantillaPruebaId(versionPlantillaPruebaId);
+        vacantes.save(vacante);
+        auditoria.registrar(quien.organizacionId(), quien, "asignar_plantilla_prueba",
+                "vacante", id,
+                anterior == null ? null : Map.of("versionPlantillaPruebaId", String.valueOf(anterior)),
+                Map.of("versionPlantillaPruebaId", String.valueOf(versionPlantillaPruebaId)), null);
     }
 
     @Override

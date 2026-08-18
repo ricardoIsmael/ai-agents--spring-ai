@@ -1,7 +1,8 @@
 # Las APIs del sistema
 
 Sistema de selección de personal — Renaser Consulting
-Versión 1.0 · 2026-08-15 · Cubre el **hito 1**
+Versión 1.2 · 2026-08-17 · Cubre el **hito 1**, la evaluación del **hito 2**, y la prueba del
+puesto y la decisión final del **hito 3**
 
 Este documento explica las APIs para quien las va a consumir: el frontend de RENASER OS y el
 portal del candidato. **La referencia viva es Swagger**, en `http://localhost:8080/swagger-ui.html`
@@ -74,6 +75,17 @@ en lenguaje normal.
 | POST `/postulaciones/{uuid}/retiro` | Retirarla. **No borra sus datos**: eso se pide aparte | Candidato |
 | POST `/consentimientos/futuros/retiro` | Retirar el consentimiento de futuros contactos | Candidato |
 | POST `/solicitudes-borrado` | Pedir el borrado de sus datos | Candidato |
+| GET `/evaluacion/{uuid}` | Su evaluación: las preguntas en **su** orden y lo que lleva respondido | Candidato |
+| POST `/evaluacion/{uuid}/inicio` | Empezar. La primera vez elige qué preguntas le tocan | Candidato |
+| PUT `/evaluacion/{uuid}/respuestas/{preguntaId}` | Guardar una respuesta | Candidato |
+| POST `/evaluacion/{uuid}/entrega` | Entregar. Ya no se cambia, y pasa a calificarse | Candidato |
+
+**La evaluación es de quien la responde.** Todo entra por el código de la postulación, no por
+el id de la evaluación, y una que no es suya responde 404 — un 403 ya confirmaría que existe.
+
+**Lo que nunca sale al portal:** el puntaje de cada opción, la lógica interna de la pregunta y
+el código de dimensión que mide. No es que se filtren al serializar: los contratos no tienen
+ese campo. Si la clave llega al navegador, el banco entero queda inutilizado.
 
 **La regla que importa al postular:** el formulario pregunta por cada requisito indispensable de
 la vacante y el candidato confirma cuáles cumple. Cualquier requisito activo no confirmado cierra
@@ -100,6 +112,9 @@ la postulación en el acto (`NO_CONTINUA`), con la regla exacta escrita en su hi
 | POST `/vacantes` | Crear en borrador. **Exige una solicitud aprobada** | `crear_vacante` |
 | PUT `/vacantes/{id}` | Editar mientras no esté cerrada | `editar_vacante` |
 | GET/POST `/vacantes/{id}/requisitos` · DELETE `/{requisitoId}` | Los requisitos indispensables. No se borran: se desactivan | `definir_requisitos_objetivos` |
+| POST `/vacantes/{id}/plantilla-evaluacion` | Qué evaluación responderá quien postule. **Hace falta antes de publicar** | `elegir_plantilla_evaluacion` |
+| POST `/vacantes/{id}/plantilla-prueba` | Qué prueba del puesto rendirá quien llegue a esa etapa. **Hace falta antes de publicar** | `elegir_plantilla_prueba` |
+| GET/POST `/vacantes/{id}/barreras-criticas` | Las capacidades que ningún promedio alto compensa | `definir_barreras_criticas` |
 | POST `/vacantes/{id}/publicacion` | Publicar: aparece en el portal | `publicar_vacante` |
 | POST `/vacantes/{id}/cierre` | Cerrar: frena postulaciones nuevas, **no arrastra las que van en marcha** | `cerrar_vacante` |
 
@@ -113,6 +128,31 @@ la postulación en el acto (`NO_CONTINUA`), con la regla exacta escrita en su hi
 | POST `/postulaciones/{id}/transiciones` | Mover a cualquier estado. **El motivo es obligatorio, sin excepción** | `mover_postulacion` |
 | POST `/postulaciones/{id}/confirmacion-avance` | Confirmar que avanza: el sistema calcula el estado siguiente | `confirmar_avance` |
 | GET `/archivos/{id}/descarga` | Descargar el CV | `descargar_entregables` |
+
+### La prueba del puesto (hito 3)
+
+| Método y ruta | Qué hace | Permiso |
+|---|---|---|
+| POST `/plantillas-prueba` · `/{id}/versiones` | Crear la plantilla y una versión en borrador | `editar_plantillas_prueba` |
+| POST `/plantillas-prueba/versiones/{id}/publicacion` | Publicar: exige 8-10 preguntas universales, 3-5 específicas, y la rúbrica sumando 100 | `editar_plantillas_prueba` |
+| POST `/postulaciones/{id}/prueba/criterios/{criterioId}/nota` | Poner la nota de un criterio, con explicación obligatoria | `ajustar_nota` |
+| POST `/postulaciones/{id}/prueba/calificacion` | Ponderar las notas ya puestas. Exige que estén todos los criterios | `ajustar_nota` |
+
+**El portal del candidato es `/api/v1/portal/prueba/{codigo}`**: ver, iniciar (arranca el
+reloj), responder, subir entregables y entregar. Mismas reglas que la evaluación: nada de
+lo interno viaja, y una prueba ajena responde 404.
+
+### La decisión final (hito 3)
+
+| Método y ruta | Qué hace | Permiso |
+|---|---|---|
+| GET `/postulaciones/{id}/semaforo` | La Puntuación Global y una propuesta de semáforo | `ver_semaforo_decision` |
+| POST `/postulaciones/{id}/decision` | Decidir. El motivo es siempre obligatorio (RF-119) | `decidir_contratacion` la primera vez, `cambiar_decision` para corregir |
+| POST `/postulaciones/{id}/evidencia-adicional` | Pedir evidencia adicional cuando sale ámbar. Tope configurable | `pedir_evidencia_adicional` |
+
+⚠️ **La decisión de contratar no es de Talento.** Es del responsable del área o de
+Dirección (RF-119) — la primera vez en el sistema que Talento no tiene el permiso de
+escritura más importante de un flujo.
 
 ### Administración
 

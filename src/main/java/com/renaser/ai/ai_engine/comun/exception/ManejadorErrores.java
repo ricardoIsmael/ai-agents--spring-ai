@@ -3,9 +3,14 @@ package com.renaser.ai.ai_engine.comun.exception;
 import com.renaser.ai.ai_engine.administracion.controller.AdministracionController;
 import com.renaser.ai.ai_engine.ai.controller.perfilintegral.AgentesIaPanelController;
 import com.renaser.ai.ai_engine.catalogo.controller.CatalogoController;
+import com.renaser.ai.ai_engine.decision.controller.DecisionPanelController;
 import com.renaser.ai.ai_engine.perfilintegral.controller.BancoPreguntasController;
+import com.renaser.ai.ai_engine.perfilintegral.controller.EvaluacionPortalController;
 import com.renaser.ai.ai_engine.perfilintegral.controller.PlantillasEvaluacionController;
 import com.renaser.ai.ai_engine.pesos.controller.PesosController;
+import com.renaser.ai.ai_engine.prueba.controller.CalificacionPruebaController;
+import com.renaser.ai.ai_engine.prueba.controller.PlantillaPruebaController;
+import com.renaser.ai.ai_engine.prueba.controller.PruebaPortalController;
 import com.renaser.ai.ai_engine.portal.controller.PortalController;
 import com.renaser.ai.ai_engine.postulacion.controller.PostulacionesPanelController;
 import com.renaser.ai.ai_engine.seguridad.controller.PanelAuthController;
@@ -51,10 +56,15 @@ import java.util.regex.Pattern;
         PostulacionesPanelController.class,
         PanelAuthController.class,
         CatalogoController.class,
+        EvaluacionPortalController.class,
         BancoPreguntasController.class,
         PlantillasEvaluacionController.class,
         PesosController.class,
-        AgentesIaPanelController.class})
+        AgentesIaPanelController.class,
+        PruebaPortalController.class,
+        PlantillaPruebaController.class,
+        CalificacionPruebaController.class,
+        DecisionPanelController.class})
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @Slf4j
 public class ManejadorErrores {

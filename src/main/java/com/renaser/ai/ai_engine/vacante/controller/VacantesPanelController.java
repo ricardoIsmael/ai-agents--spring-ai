@@ -71,6 +71,22 @@ public class VacantesPanelController {
         servicio.editar(permisos.actual(), id, datos);
     }
 
+    @PostMapping("/vacantes/{id}/plantilla-evaluacion")
+    @PreAuthorize("@permisos.tiene('elegir_plantilla_evaluacion')")
+    @Operation(summary = "Elegir qué evaluación responderá quien postule. Hace falta antes de publicar")
+    public void asignarPlantilla(@PathVariable Long id,
+                                 @RequestBody AsignarPlantilla datos) {
+        servicio.asignarPlantillaEvaluacion(permisos.actual(), id, datos.plantillaEvaluacionId());
+    }
+
+    @PostMapping("/vacantes/{id}/plantilla-prueba")
+    @PreAuthorize("@permisos.tiene('elegir_plantilla_prueba')")
+    @Operation(summary = "Elegir qué prueba del puesto rendirá quien llegue a esa etapa. Hace falta antes de publicar")
+    public void asignarPlantillaPrueba(@PathVariable Long id,
+                                       @RequestBody AsignarPlantillaPrueba datos) {
+        servicio.asignarPlantillaPrueba(permisos.actual(), id, datos.versionPlantillaPruebaId());
+    }
+
     @PostMapping("/vacantes/{id}/publicacion")
     @PreAuthorize("@permisos.tiene('publicar_vacante')")
     @Operation(summary = "Publicar: la vacante aparece en el portal")
