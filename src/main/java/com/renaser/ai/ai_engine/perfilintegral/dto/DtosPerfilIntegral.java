@@ -52,4 +52,67 @@ public final class DtosPerfilIntegral {
 
     /** Lo que responde pedir que se vuelva a calificar. */
     public record CalificacionEncoladaResponse(String estado, String mensaje) {}
+
+    /**
+     * Quién es el candidato, sacado de su currículum por el agente que no puntúa.
+     *
+     * <p>No lleva edad, sexo ni estado civil: el agente lee la versión recortada del
+     * currículum y esos datos no le llegan.
+     */
+    public record DatosCandidato(String nombre, String email, String telefono,
+                                 String perfilResumen, String habilidades,
+                                 Integer experienciaMesesTotal, String ultimoPuesto,
+                                 String ultimaEmpresa, String educacionMaxima) {}
+
+    /** Lo que responde pedir una pasada sobre la tanda entera. */
+    public record PasadaEncolada(String estado, int candidatos, String mensaje) {}
+
+    /**
+     * La tanda de una convocatoria, ordenada de más apto a menos.
+     *
+     * <p>Es la pantalla que contesta «¿a quién invito primero?». Manda el grupo de
+     * prioridad y no la nota: alguien con 92 y un riesgo crítico no va por delante de
+     * alguien con 88 y ninguno, y ordenar solo por número escondería justo eso.
+     */
+    public record RankingVacante(
+            Long vacanteId,
+            String vacante,
+            String puesto,
+            String nivelPuesto,
+            int total,
+            int conPasadaFina,
+            int calificados,
+            int enCurso,
+            int fallidos,
+            List<FilaRanking> filas) {}
+
+    /**
+     * Un candidato en la tanda. Los números pueden venir vacíos y eso es información: la
+     * IA todavía no llegó a esa fila, o falló y no se le inventó una nota.
+     */
+    public record FilaRanking(
+            int puesto,
+            Long postulacionId,
+            String uuid,
+            String candidato,
+            String correo,
+            String estado,
+            String estadoNombre,
+            String estadoCalificacion,
+            // FINA, RAPIDA o vacío. Una nota de la rápida es provisional.
+            String pasada,
+            DatosCandidato datos,
+            String grupoPrioridad,
+            BigDecimal notaEtapa,
+            BigDecimal notaCurriculum,
+            BigDecimal adecuacion,
+            BigDecimal potencial,
+            BigDecimal altoRendimiento,
+            BigDecimal confianzaEvidencia,
+            String resumen,
+            int riesgosCriticos,
+            int fortalezas,
+            int alertas,
+            Instant actualizadoEn,
+            List<NotaCriterioResponse> notasCriterio) {}
 }

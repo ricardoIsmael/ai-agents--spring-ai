@@ -91,7 +91,14 @@ public class ExtractorTextoCv {
     }
 
     private String exigirContenido(String texto, String queja) {
-        String limpio = texto == null ? "" : texto.replaceAll("[ \\t\\x0B\\f\\r]+", " ")
+        // El byte nulo y los demás caracteres de control se van antes que nada. Un PDF mal
+        // generado los trae, y una columna de texto de Postgres los rechaza: la calificación
+        // se estrellaba al guardar, con la nota ya calculada, y el reintento volvía a
+        // estrellarse igual porque el archivo no cambia. Se limpian aquí y no al guardar
+        // porque tampoco tienen nada que hacer en lo que se le manda al modelo.
+        String sinControles = texto == null ? ""
+                : texto.replaceAll("[\\x00-\\x08\\x0E-\\x1F\\x7F]", "");
+        String limpio = sinControles.replaceAll("[ \\t\\x0B\\f\\r]+", " ")
                 .replaceAll("\\n{3,}", "\n\n").trim();
         // Un currículum de menos de 40 caracteres no es un currículum. Mejor fallar y que el
         // trabajo quede pendiente que mandarle basura al modelo y guardar la nota que salga.

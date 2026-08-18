@@ -7,6 +7,8 @@ import com.renaser.ai.ai_engine.perfilintegral.dto.DtosCalificacionIa.AlertaIa;
 import com.renaser.ai.ai_engine.perfilintegral.dto.DtosCalificacionIa.CriterioConPeso;
 import com.renaser.ai.ai_engine.perfilintegral.dto.DtosCalificacionIa.HallazgoIa;
 import com.renaser.ai.ai_engine.perfilintegral.dto.DtosCalificacionIa.InsumoCv;
+import com.renaser.ai.ai_engine.perfilintegral.dto.DtosCalificacionIa.InsumoDatos;
+import com.renaser.ai.ai_engine.perfilintegral.dto.DtosCalificacionIa.ResultadoDatos;
 import com.renaser.ai.ai_engine.perfilintegral.dto.DtosCalificacionIa.InsumoPerfil;
 import com.renaser.ai.ai_engine.perfilintegral.dto.DtosCalificacionIa.InsumoRespuestas;
 import com.renaser.ai.ai_engine.perfilintegral.dto.DtosCalificacionIa.NotaCriterioIa;
@@ -44,8 +46,10 @@ import com.renaser.ai.ai_engine.perfilintegral.service.ServicioCalificacion;
 import com.renaser.ai.ai_engine.pesos.entity.PesoComponentePerfil;
 import com.renaser.ai.ai_engine.pesos.repository.PesoComponentePerfilRepository;
 import com.renaser.ai.ai_engine.postulacion.entity.Cv;
+import com.renaser.ai.ai_engine.postulacion.entity.DatoCv;
 import com.renaser.ai.ai_engine.postulacion.entity.Postulacion;
 import com.renaser.ai.ai_engine.postulacion.repository.CvRepository;
+import com.renaser.ai.ai_engine.postulacion.repository.DatoCvRepository;
 import com.renaser.ai.ai_engine.postulacion.repository.EnlaceCvRepository;
 import com.renaser.ai.ai_engine.postulacion.repository.PostulacionRepository;
 import com.renaser.ai.ai_engine.postulacion.service.MaquinaEstados;
@@ -93,6 +97,7 @@ public class PuenteCalificacionIaImpl implements PuenteCalificacionIa {
     private final VacanteRepository vacantes;
     private final PuestoRepository puestos;
     private final CvRepository cvs;
+    private final DatoCvRepository datosCv;
     private final EnlaceCvRepository enlaces;
     private final RespuestaRepository respuestas;
     private final PreguntaRepository preguntas;
@@ -115,6 +120,78 @@ public class PuenteCalificacionIaImpl implements PuenteCalificacionIa {
     @Override
     public Long organizacionDe(Long postulacionId) {
         return postulacion(postulacionId).getOrganizacionId();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean tieneEvaluacionEntregada(Long postulacionId) {
+        Postulacion postulacion = postulacion(postulacionId);
+        return postulacion.getEvaluacionId() != null
+                && !respuestas.findByEvaluacionId(postulacion.getEvaluacionId()).isEmpty();
+    }
+
+    // ==================== DATOS_CV ====================
+
+    @Override
+    @Transactional
+    public InsumoDatos insumoDatos(Long postulacionId) {
+        Postulacion postulacion = postulacion(postulacionId);
+        Puesto puesto = puesto(vacante(postulacion));
+        // El mismo texto recortado que ven los demás agentes: sin foto, edad, sexo ni
+        // estado civil. Este no tiene forma de pedir el original, igual que los otros.
+        return new InsumoDatos(puesto.getNombre(), textoCv.prepararParaIa(postulacionId));
+    }
+
+    @Override
+    @Transactional
+    public void guardarDatos(Long postulacionId, Long ejecucionIaId, ResultadoDatos resultado) {
+        if (resultado == null) {
+            throw new IllegalStateException(
+                    "El agente DATOS_CV no devolvió nada: no se guarda una ficha vacía");
+        }
+        DatoCv fila = datosCv.findByPostulacionId(postulacionId)
+                .orElseGet(() -> DatoCv.builder()
+                        .postulacionId(postulacionId)
+                        .creadoEn(Instant.now())
+                        .build());
+        fila.setNombre(recortar(resultado.nombre(), 200));
+        fila.setEmail(recortar(resultado.email(), 200));
+        fila.setTelefono(recortar(resultado.telefono(), 60));
+        fila.setPerfilResumen(recortar(resultado.perfilResumen(), 500));
+        // Cinco como mucho, unidas por «|». Si el modelo devuelve quince, sobran diez: la
+        // instrucción pide las más relevantes y una lista larga no se lee de un vistazo.
+        fila.setHabilidades(lista(resultado.habilidades()).stream()
+                .filter(h -> !esVacio(h))
+                .limit(5)
+                .collect(Collectors.joining(" | ")));
+        fila.setExperienciaMesesTotal(mesesValidos(resultado.experienciaMesesTotal()));
+        fila.setUltimoPuesto(recortar(resultado.ultimoPuesto(), 200));
+        fila.setUltimaEmpresa(recortar(resultado.ultimaEmpresa(), 200));
+        fila.setUltimaMesesDuracion(mesesValidos(resultado.ultimaMesesDuracion()));
+        fila.setEducacionMaxima(recortar(resultado.educacionMaxima(), 120));
+        fila.setEjecucionIaId(ejecucionIaId);
+        fila.setActualizadoEn(Instant.now());
+        datosCv.save(fila);
+
+        log.info("DATOS_CV: ficha de la postulación {} guardada ({})",
+                postulacionId, fila.getNombre() == null ? "sin nombre" : fila.getNombre());
+    }
+
+    /**
+     * Meses que se pueden creer.
+     *
+     * <p>Un negativo es un error de cuenta del modelo y 900 meses son setenta y cinco años
+     * de carrera. Ninguno de los dos se guarda: vale más un hueco que un dato falso, porque
+     * el hueco se ve y el dato falso se cree.
+     */
+    private Integer mesesValidos(Integer meses) {
+        return meses == null || meses < 0 || meses > 720 ? null : meses;
+    }
+
+    private String recortar(String texto, int tope) {
+        if (esVacio(texto)) return null;
+        String limpio = texto.trim();
+        return limpio.length() <= tope ? limpio : limpio.substring(0, tope);
     }
 
     // ==================== EVIDENCIA_CV ====================

@@ -19,6 +19,9 @@ public class TrabajoIa {
 
     private Long organizacionId;
     private String agenteCodigo;
+    // RAPIDA: el modelo contesta sin razonar, para ordenar la tanda entera.
+    // FINA: razona, y solo se pide para los de arriba.
+    private String modo;
     private Long postulacionId;
     private String referenciaTabla;
     private Long referenciaId;

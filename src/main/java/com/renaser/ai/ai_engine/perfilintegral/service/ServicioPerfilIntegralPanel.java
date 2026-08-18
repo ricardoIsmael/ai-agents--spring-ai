@@ -2,6 +2,8 @@ package com.renaser.ai.ai_engine.perfilintegral.service;
 
 import com.renaser.ai.ai_engine.perfilintegral.dto.DtosPerfilIntegral.CalificacionEncoladaResponse;
 import com.renaser.ai.ai_engine.perfilintegral.dto.DtosPerfilIntegral.PerfilIntegralResponse;
+import com.renaser.ai.ai_engine.perfilintegral.dto.DtosPerfilIntegral.PasadaEncolada;
+import com.renaser.ai.ai_engine.perfilintegral.dto.DtosPerfilIntegral.RankingVacante;
 import com.renaser.ai.ai_engine.seguridad.dto.ContextoUsuario;
 
 /**
@@ -37,6 +39,53 @@ public interface ServicioPerfilIntegralPanel {
      * se quedó atrás, y recuperar una que falló después de agotar sus reintentos.
      */
     CalificacionEncoladaResponse recalificar(ContextoUsuario quien, Long postulacionId);
+
+    /**
+     * Criba: que la IA lea el currículum y arme el retrato con solo eso.
+     *
+     * <p>Es la primera decisión de una convocatoria: llegan cien currículums y hay que
+     * saber a quién invitar a la evaluación. Hasta ahora no había forma de pedirlo, porque
+     * {@link #recalificar} exige una evaluación entregada y aquí justamente no la hay.
+     *
+     * <p>Lo único que hace falta es el currículum. Mueve la postulación a
+     * {@code PERFIL_CALIFICANDO} para que el embudo diga la verdad mientras corre, y el
+     * agente la deja en {@code PERFIL_POR_CONFIRMAR} con su grupo de prioridad.
+     */
+    CalificacionEncoladaResponse cribarCv(ContextoUsuario quien, Long postulacionId);
+
+    /**
+     * La tanda entera de una convocatoria, ordenada de más apto a menos.
+     *
+     * <p>Es lo que contesta «¿a quién invito primero?», y no se puede armar desde fuera
+     * pidiendo un perfil por candidato: el orden depende del grupo de prioridad, que sale
+     * de comparar a todos entre sí.
+     *
+     * <p>Incluye a quien todavía no tiene nota. Un candidato cuya calificación falló no
+     * puede desaparecer de la lista: desaparecería también el problema.
+     */
+    RankingVacante ranking(ContextoUsuario quien, Long vacanteId);
+
+    /**
+     * Primera pasada sobre la tanda entera: rápida, para ordenar.
+     *
+     * <p>Encola a todos los que aún no tienen retrato. Diez currículums tardan medio minuto
+     * porque el modelo contesta sin razonar y porque van en paralelo.
+     *
+     * <p>Lo que sale es un orden, no un veredicto. Sirve para separar la mitad de abajo,
+     * donde la decisión es fácil y los dos modelos coinciden.
+     */
+    PasadaEncolada cribaRapida(ContextoUsuario quien, Long vacanteId);
+
+    /**
+     * Segunda pasada, solo sobre los de arriba: cuidadosa, para decidir.
+     *
+     * <p>Vuelve a calificar con el modelo que razona a la parte alta de la tanda —cuánta,
+     * lo dice el parámetro {@code porcentaje_criba_fina}— y pisa las notas provisionales.
+     *
+     * <p>Se pide después de la primera y no a la vez, porque cuál es «arriba» no se sabe
+     * hasta que la primera termina de ordenar a todos.
+     */
+    PasadaEncolada cribaFina(ContextoUsuario quien, Long vacanteId);
 
     /**
      * Reemplaza el currículum de una postulación que ya existe, desde el panel.

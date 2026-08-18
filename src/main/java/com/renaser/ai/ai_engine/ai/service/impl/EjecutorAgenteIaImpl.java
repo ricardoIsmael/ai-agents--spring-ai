@@ -33,6 +33,12 @@ public class EjecutorAgenteIaImpl implements EjecutorAgenteIa {
     @Override
     public <T> Ejecutado<T> ejecutar(TrabajoIa trabajo, String objetivo, String formato,
                                      Object insumo, Class<T> tipo) {
+        return ejecutar(trabajo, objetivo, formato, insumo, tipo, true);
+    }
+
+    @Override
+    public <T> Ejecutado<T> ejecutar(TrabajoIa trabajo, String objetivo, String formato,
+                                     Object insumo, Class<T> tipo, boolean razona) {
         Agente agente = agentes.findById(trabajo.getAgenteCodigo())
                 .orElseThrow(() -> new IllegalStateException(
                         "No existe el agente " + trabajo.getAgenteCodigo()));
@@ -51,7 +57,7 @@ public class EjecutorAgenteIaImpl implements EjecutorAgenteIa {
         long empezo = System.nanoTime();
         RespuestaModelo respuesta = null;
         try {
-            respuesta = modelo.preguntar(trabajo.getAgenteCodigo(), sistema, contenido);
+            respuesta = modelo.preguntar(trabajo.getAgenteCodigo(), sistema, contenido, razona);
             T leido = leer(respuesta.texto(), tipo);
             EjecucionIa fila = guardar(trabajo, agente, instruccion, objetivo, envio, respuesta,
                     empezo, true, null);
