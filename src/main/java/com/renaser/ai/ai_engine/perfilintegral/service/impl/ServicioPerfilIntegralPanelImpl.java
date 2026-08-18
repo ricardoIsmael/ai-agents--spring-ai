@@ -7,27 +7,46 @@ import com.renaser.ai.ai_engine.archivo.service.AlmacenArchivos;
 import com.renaser.ai.ai_engine.auditoria.service.ServicioAuditoria;
 import com.renaser.ai.ai_engine.perfilintegral.dto.DtosPerfilIntegral.AlertaResponse;
 import com.renaser.ai.ai_engine.perfilintegral.dto.DtosPerfilIntegral.CalificacionEncoladaResponse;
+import com.renaser.ai.ai_engine.perfilintegral.dto.DtosPerfilIntegral.FilaRanking;
 import com.renaser.ai.ai_engine.perfilintegral.dto.DtosPerfilIntegral.HallazgoResponse;
+import com.renaser.ai.ai_engine.perfilintegral.dto.DtosPerfilIntegral.DatosCandidato;
 import com.renaser.ai.ai_engine.perfilintegral.dto.DtosPerfilIntegral.NotaCriterioResponse;
+import com.renaser.ai.ai_engine.perfilintegral.dto.DtosPerfilIntegral.PasadaEncolada;
 import com.renaser.ai.ai_engine.perfilintegral.dto.DtosPerfilIntegral.PerfilIntegralResponse;
+import com.renaser.ai.ai_engine.perfilintegral.dto.DtosPerfilIntegral.RankingVacante;
 import com.renaser.ai.ai_engine.perfilintegral.entity.Criterio;
+import com.renaser.ai.ai_engine.perfilintegral.entity.HallazgoPerfil;
 import com.renaser.ai.ai_engine.perfilintegral.entity.NotaCriterio;
 import com.renaser.ai.ai_engine.perfilintegral.entity.NotaEtapa;
 import com.renaser.ai.ai_engine.perfilintegral.entity.PerfilTalento;
+import com.renaser.ai.ai_engine.perfilintegral.entity.PesoCriterio;
 import com.renaser.ai.ai_engine.perfilintegral.repository.AlertaRepository;
 import com.renaser.ai.ai_engine.perfilintegral.repository.CriterioRepository;
 import com.renaser.ai.ai_engine.perfilintegral.repository.HallazgoPerfilRepository;
 import com.renaser.ai.ai_engine.perfilintegral.repository.NotaCriterioRepository;
 import com.renaser.ai.ai_engine.perfilintegral.repository.NotaEtapaRepository;
 import com.renaser.ai.ai_engine.perfilintegral.repository.PerfilTalentoRepository;
+import com.renaser.ai.ai_engine.perfilintegral.repository.PesoCriterioRepository;
 import com.renaser.ai.ai_engine.perfilintegral.service.ServicioPerfilIntegralPanel;
 import com.renaser.ai.ai_engine.postulacion.entity.Cv;
+import com.renaser.ai.ai_engine.postulacion.entity.DatoCv;
+import com.renaser.ai.ai_engine.postulacion.entity.EstadoPostulacion;
 import com.renaser.ai.ai_engine.postulacion.entity.Postulacion;
 import com.renaser.ai.ai_engine.postulacion.repository.CvRepository;
+import com.renaser.ai.ai_engine.postulacion.repository.DatoCvRepository;
+import com.renaser.ai.ai_engine.postulacion.repository.EstadoPostulacionRepository;
 import com.renaser.ai.ai_engine.postulacion.repository.PostulacionRepository;
+import com.renaser.ai.ai_engine.postulacion.service.MaquinaEstados;
 import com.renaser.ai.ai_engine.seguridad.dto.ContextoUsuario;
 import com.renaser.ai.ai_engine.seguridad.dto.FiltroAlcance;
 import com.renaser.ai.ai_engine.seguridad.service.Permisos;
+import com.renaser.ai.ai_engine.usuario.entity.Persona;
+import com.renaser.ai.ai_engine.usuario.entity.Usuario;
+import com.renaser.ai.ai_engine.usuario.repository.PersonaRepository;
+import com.renaser.ai.ai_engine.usuario.repository.UsuarioRepository;
+import com.renaser.ai.ai_engine.vacante.entity.Puesto;
+import com.renaser.ai.ai_engine.vacante.entity.Vacante;
+import com.renaser.ai.ai_engine.vacante.repository.PuestoRepository;
 import com.renaser.ai.ai_engine.vacante.repository.VacanteRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -36,6 +55,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -50,6 +72,7 @@ import java.util.stream.Collectors;
  */
 @Service
 @RequiredArgsConstructor
+@lombok.extern.slf4j.Slf4j
 public class ServicioPerfilIntegralPanelImpl implements ServicioPerfilIntegralPanel {
 
     private static final String ETAPA = "PERFIL_INTEGRAL";
@@ -63,10 +86,24 @@ public class ServicioPerfilIntegralPanelImpl implements ServicioPerfilIntegralPa
     private final AlertaRepository alertas;
     private final CriterioRepository criterios;
     private final CvRepository cvs;
+    private final DatoCvRepository datosCv;
+    private final com.renaser.ai.ai_engine.parametro.service.ServicioParametros parametros;
+    private final PesoCriterioRepository pesosCriterio;
+    private final EstadoPostulacionRepository estados;
+    private final UsuarioRepository usuarios;
+    private final PersonaRepository personas;
+    private final PuestoRepository puestos;
     private final AlmacenArchivos almacen;
     private final ServicioAuditoria auditoria;
     private final ColaCalificacionIa cola;
+    private final MaquinaEstados maquina;
     private final Permisos permisos;
+
+    // El orden de la tanda. Manda el grupo, no la nota: quien llega a la nota arrastrando un
+    // riesgo crítico no va por delante de quien llega sin ninguno, y ordenar por número
+    // escondería justo eso. Lo que no tiene grupo va al final, no arriba.
+    private static final List<String> ORDEN_GRUPO =
+            List.of("ALTA", "POTENCIAL_CON_RIESGO", "NO_PRIORIZADO", "INCOMPATIBLE");
 
     @Override
     public PerfilIntegralResponse ver(ContextoUsuario quien, Long postulacionId) {
@@ -127,6 +164,290 @@ public class ServicioPerfilIntegralPanelImpl implements ServicioPerfilIntegralPa
         return new CalificacionEncoladaResponse("ENCOLADA",
                 "La calificación quedó en cola. Tarda decenas de segundos: "
                         + "consulta el perfil para ver cuándo termina.");
+    }
+
+    @Override
+    @Transactional
+    public CalificacionEncoladaResponse cribarCv(ContextoUsuario quien, Long postulacionId) {
+        Postulacion postulacion = laVisible(quien, postulacionId, "ajustar_nota");
+
+        // Lo único indispensable. Sin archivo el agente se plantaría al pedir el texto, y
+        // más vale decirlo aquí que gastar tres reintentos para llegar a la misma frase.
+        cvs.findByPostulacionId(postulacionId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Currículum", "postulación", postulacionId));
+
+        // El estado tiene que decir la verdad mientras corre: si se quedara en
+        // PERFIL_TURNO_CANDIDATO, la bandeja seguiría pidiendo algo al candidato que ya
+        // nadie espera. Solo se mueve si aún no está ahí: recalificar no es retroceder.
+        if (!"PERFIL_CALIFICANDO".equals(postulacion.getEstadoCodigo())
+                && !"PERFIL_POR_CONFIRMAR".equals(postulacion.getEstadoCodigo())) {
+            maquina.transicionar(postulacion, "PERFIL_CALIFICANDO", null, null, true, false, null);
+        }
+
+        cola.encolarCribaCv(postulacionId);
+        auditoria.registrar(quien.organizacionId(), quien, "cribar_cv",
+                "postulacion", postulacionId, null, Map.of(), null);
+        return new CalificacionEncoladaResponse("ENCOLADA",
+                "La criba del currículum quedó en cola. Tarda decenas de segundos: "
+                        + "consulta el ranking de la vacante para ver cuándo termina.");
+    }
+
+    @Override
+    @Transactional
+    public PasadaEncolada cribaRapida(ContextoUsuario quien, Long vacanteId) {
+        Vacante vacante = vacanteVisible(quien, vacanteId);
+        int encolados = 0;
+        for (Postulacion p : postulaciones.findByVacanteIdOrderByCreadoEnDesc(vacanteId)) {
+            // Quien ya tiene retrato no se vuelve a calificar: repetirlo cuesta lo mismo y
+            // no cambia nada. Para rehacer uno concreto está el botón de su ficha.
+            if (cola.pasadaDe(p.getId()) != null || cvs.findByPostulacionId(p.getId()).isEmpty()) {
+                continue;
+            }
+            moverACalificando(p);
+            cola.encolarCribaRapida(p.getId());
+            encolados++;
+        }
+        auditoria.registrar(quien.organizacionId(), quien, "criba_rapida",
+                "vacante", vacanteId, null, Map.of("candidatos", String.valueOf(encolados)), null);
+        return new PasadaEncolada("ENCOLADA", encolados,
+                encolados == 0
+                        ? "No había nadie sin calificar en «" + vacante.getTitulo() + "»."
+                        : encolados + " currículums en cola. Con el modelo rápido, una tanda "
+                          + "de diez tarda alrededor de medio minuto.");
+    }
+
+    @Override
+    @Transactional
+    public PasadaEncolada cribaFina(ContextoUsuario quien, Long vacanteId) {
+        vacanteVisible(quien, vacanteId);
+        List<FilaRanking> filas = ranking(quien, vacanteId).filas();
+
+        // Sin una primera pasada que haya ordenado, «los de arriba» no existen: la lista
+        // sale por orden alfabético y la segunda pasada se gastaría en la gente que tocó
+        // por la letra de su apellido. Es un error fácil de cometer —basta pulsar el botón
+        // mientras la tanda todavía se está cargando— y caro de descubrir.
+        long conNota = filas.stream().filter(f -> f.notaEtapa() != null).count();
+        if (conNota == 0) {
+            throw new IllegalStateException(
+                    "Todavía no hay ninguna nota en esta convocatoria: la segunda pasada no "
+                            + "sabría a quién mirar y elegiría por orden alfabético. Lanza "
+                            + "primero la pasada rápida y espera a que termine.");
+        }
+        if (conNota < filas.size()) {
+            log.warn("La segunda pasada de la vacante {} se pide con {} de {} candidatos "
+                    + "todavía sin nota: los que faltan no entran en el corte",
+                    vacanteId, filas.size() - conNota, filas.size());
+        }
+
+        int porcentaje = parametros.entero(quien.organizacionId(), "porcentaje_criba_fina", 50);
+        // Al menos uno: con tres candidatos y un corte del 20 % la cuenta da cero, y una
+        // segunda pasada que no mira a nadie no es una segunda pasada.
+        int cuantos = Math.max(1, (int) Math.ceil(conNota * porcentaje / 100.0));
+
+        int encolados = 0;
+        for (FilaRanking f : filas.stream()
+                .filter(f -> f.notaEtapa() != null)
+                .limit(cuantos).toList()) {
+            // Quien ya pasó por la fina no repite: es la definitiva.
+            if ("FINA".equals(f.pasada())) {
+                continue;
+            }
+            postulaciones.findById(f.postulacionId()).ifPresent(this::moverACalificando);
+            cola.encolarCribaFina(f.postulacionId());
+            encolados++;
+        }
+        auditoria.registrar(quien.organizacionId(), quien, "criba_fina",
+                "vacante", vacanteId, null,
+                Map.of("candidatos", String.valueOf(encolados),
+                       "porcentaje", String.valueOf(porcentaje)), null);
+        return new PasadaEncolada("ENCOLADA", encolados,
+                encolados == 0
+                        ? "Los de arriba ya están calificados con el modelo que razona."
+                        : "Se vuelven a calificar los " + encolados + " primeros (el "
+                          + porcentaje + "% de la tanda) con el modelo que razona. "
+                          + "Tarda alrededor de un minuto y medio.");
+    }
+
+    /**
+     * Deja el estado diciendo la verdad mientras la IA trabaja.
+     *
+     * <p>Si se quedara en PERFIL_TURNO_CANDIDATO, la bandeja seguiría pidiéndole algo al
+     * candidato que ya nadie espera.
+     */
+    private void moverACalificando(Postulacion p) {
+        if (!"PERFIL_CALIFICANDO".equals(p.getEstadoCodigo())
+                && !"PERFIL_POR_CONFIRMAR".equals(p.getEstadoCodigo())) {
+            maquina.transicionar(p, "PERFIL_CALIFICANDO", null, null, true, false, null);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public RankingVacante ranking(ContextoUsuario quien, Long vacanteId) {
+        Vacante vacante = vacanteVisible(quien, vacanteId);
+        Puesto puesto = puestos.findById(vacante.getPuestoId()).orElse(null);
+
+        // Los pesos son los de la versión de la vacante, no los de la última publicada: una
+        // nota de hace tres meses tiene que seguir explicándose con los pesos de entonces.
+        Map<Long, BigDecimal> pesos = puesto == null ? Map.of()
+                : pesosCriterio.findByVersionPesosIdAndNivelPuestoCodigo(
+                                vacante.getVersionPesosId(), puesto.getNivelPuestoCodigo()).stream()
+                        .collect(Collectors.toMap(PesoCriterio::getCriterioId,
+                                PesoCriterio::getPeso, (a, b) -> a));
+
+        List<Criterio> delCurriculum =
+                criterios.findByEtapaCodigoAndVersionPlantillaPruebaIdIsNullOrderByOrden(ETAPA);
+        Map<String, String> nombreEstado = estados.findAllByOrderByOrden().stream()
+                .collect(Collectors.toMap(EstadoPostulacion::getCodigo,
+                        EstadoPostulacion::getNombre, (a, b) -> a));
+
+        List<Postulacion> suyas = postulaciones.findByVacanteIdOrderByCreadoEnDesc(vacanteId);
+        // Las fichas de datos de golpe: una consulta por fila serían diez consultas para
+        // pintar diez filas.
+        Map<Long, DatoCv> fichas = datosCv
+                .findByPostulacionIdIn(suyas.stream().map(Postulacion::getId).toList()).stream()
+                .collect(Collectors.toMap(DatoCv::getPostulacionId, Function.identity(),
+                        (a, b) -> a));
+
+        List<FilaRanking> filas = new ArrayList<>();
+        int calificados = 0, enCurso = 0, fallidos = 0, conFina = 0;
+
+        for (Postulacion p : suyas) {
+            String comoVa = cola.comoVa(p.getId());
+            if ("TERMINADA".equals(comoVa)) calificados++;
+            else if ("EN_CURSO".equals(comoVa)) enCurso++;
+            else if ("FALLIDA".equals(comoVa)) fallidos++;
+
+            String pasada = cola.pasadaDe(p.getId());
+            if ("FINA".equals(pasada)) conFina++;
+
+            PerfilTalento perfil = perfiles.findByPostulacionId(p.getId()).orElse(null);
+            List<HallazgoPerfil> suyos = perfil == null ? List.of()
+                    : hallazgos.findByPerfilTalentoId(perfil.getId());
+
+            Map<Long, NotaCriterio> notaPorCriterio = notasCriterio.findByPostulacionId(p.getId())
+                    .stream()
+                    .collect(Collectors.toMap(NotaCriterio::getCriterioId, Function.identity(),
+                            (a, b) -> a));
+            List<NotaCriterioResponse> notas = delCurriculum.stream()
+                    .map(c -> pintarNota(c, notaPorCriterio.get(c.getId())))
+                    .toList();
+
+            Usuario usuario = usuarios.findById(p.getUsuarioId()).orElse(null);
+            Persona persona = usuario == null ? null
+                    : personas.findById(usuario.getPersonaId()).orElse(null);
+
+            filas.add(new FilaRanking(
+                    0,
+                    p.getId(),
+                    p.getUuid().toString(),
+                    nombreDe(persona),
+                    usuario == null ? null : usuario.getCorreo(),
+                    p.getEstadoCodigo(),
+                    nombreEstado.getOrDefault(p.getEstadoCodigo(), p.getEstadoCodigo()),
+                    comoVa,
+                    pasada,
+                    pintarDatos(fichas.get(p.getId())),
+                    p.getGrupoPrioridad(),
+                    notasEtapa.findByPostulacionIdAndEtapaCodigo(p.getId(), ETAPA)
+                            .map(NotaEtapa::getPuntaje).orElse(null),
+                    notaCurriculum(notaPorCriterio.values(), pesos),
+                    perfil == null ? null : perfil.getAdecuacion(),
+                    perfil == null ? null : perfil.getPotencial(),
+                    perfil == null ? null : perfil.getAltoRendimiento(),
+                    perfil == null ? null : perfil.getConfianzaEvidencia(),
+                    perfil == null ? null : perfil.getResumen(),
+                    (int) suyos.stream().filter(h -> "RIESGO_CRITICO".equals(h.getTipo())).count(),
+                    (int) suyos.stream().filter(h -> "FORTALEZA".equals(h.getTipo())).count(),
+                    alertas.findByPostulacionId(p.getId()).size(),
+                    perfil == null ? null : perfil.getActualizadoEn(),
+                    notas));
+        }
+
+        filas.sort(Comparator
+                .comparingInt((FilaRanking f) -> posicionDe(f.grupoPrioridad()))
+                .thenComparing(FilaRanking::notaEtapa,
+                        Comparator.nullsLast(Comparator.reverseOrder()))
+                .thenComparing(FilaRanking::candidato,
+                        Comparator.nullsLast(Comparator.naturalOrder())));
+
+        // El número de la fila se pone al final, cuando ya están ordenadas: es la posición
+        // en la tanda y no un dato del candidato.
+        List<FilaRanking> numeradas = new ArrayList<>(filas.size());
+        for (int i = 0; i < filas.size(); i++) {
+            FilaRanking f = filas.get(i);
+            numeradas.add(new FilaRanking(i + 1, f.postulacionId(), f.uuid(), f.candidato(),
+                    f.correo(), f.estado(), f.estadoNombre(), f.estadoCalificacion(),
+                    f.pasada(), f.datos(),
+                    f.grupoPrioridad(), f.notaEtapa(), f.notaCurriculum(), f.adecuacion(),
+                    f.potencial(), f.altoRendimiento(), f.confianzaEvidencia(), f.resumen(),
+                    f.riesgosCriticos(), f.fortalezas(), f.alertas(), f.actualizadoEn(),
+                    f.notasCriterio()));
+        }
+
+        return new RankingVacante(vacanteId, vacante.getTitulo(),
+                puesto == null ? null : puesto.getNombre(),
+                puesto == null ? null : puesto.getNivelPuestoCodigo(),
+                numeradas.size(), conFina, calificados, enCurso, fallidos, numeradas);
+    }
+
+    /** La ficha del candidato, o nada si el agente que la saca todavía no ha corrido. */
+    private DatosCandidato pintarDatos(DatoCv d) {
+        return d == null ? null : new DatosCandidato(d.getNombre(), d.getEmail(), d.getTelefono(),
+                d.getPerfilResumen(), d.getHabilidades(), d.getExperienciaMesesTotal(),
+                d.getUltimoPuesto(), d.getUltimaEmpresa(), d.getEducacionMaxima());
+    }
+
+    /**
+     * La nota del currículum sobre 100: cada criterio por su peso del nivel.
+     *
+     * <p>Se divide entre los pesos de los criterios que <b>sí</b> tienen nota. Si la IA no
+     * pudo puntuar uno, lo justo es repartir su peso entre los demás, no restarlo: un hueco
+     * no es un cero.
+     */
+    private BigDecimal notaCurriculum(java.util.Collection<NotaCriterio> notas,
+                                      Map<Long, BigDecimal> pesos) {
+        BigDecimal suma = BigDecimal.ZERO;
+        BigDecimal pesoTotal = BigDecimal.ZERO;
+        for (NotaCriterio nota : notas) {
+            BigDecimal peso = pesos.get(nota.getCriterioId());
+            if (peso == null || nota.getPuntaje() == null) continue;
+            suma = suma.add(nota.getPuntaje().multiply(peso));
+            pesoTotal = pesoTotal.add(peso);
+        }
+        return pesoTotal.compareTo(BigDecimal.ZERO) == 0
+                ? null
+                : suma.divide(pesoTotal, 2, RoundingMode.HALF_UP);
+    }
+
+    /**
+     * Dónde va un grupo en el orden. Sin calificar todavía va al final, no arriba.
+     *
+     * <p>La lista es inmutable y {@code indexOf(null)} en una de esas revienta, así que el
+     * nulo se atiende antes: es el caso normal mientras la IA no ha leído a nadie.
+     */
+    private int posicionDe(String grupo) {
+        int donde = grupo == null ? -1 : ORDEN_GRUPO.indexOf(grupo);
+        return donde < 0 ? ORDEN_GRUPO.size() : donde;
+    }
+
+    private String nombreDe(Persona persona) {
+        if (persona == null || persona.getAnonimizadoEn() != null) return "(anonimizado)";
+        return ((persona.getNombre() == null ? "" : persona.getNombre()) + " "
+                + (persona.getApellidos() == null ? "" : persona.getApellidos())).trim();
+    }
+
+    private Vacante vacanteVisible(ContextoUsuario quien, Long vacanteId) {
+        Vacante vacante = vacantes.findById(vacanteId)
+                .filter(v -> quien.organizacionId().equals(v.getOrganizacionId()))
+                .orElseThrow(() -> new ResourceNotFoundException("Vacante", "id", vacanteId));
+        FiltroAlcance alcance = permisos.alcanceDe("ver_embudo");
+        if (alcance.tipo() == FiltroAlcance.Tipo.SUS_VACANTES
+                && !quien.usuarioId().equals(vacante.getResponsableUsuarioId())) {
+            throw new ResourceNotFoundException("Vacante", "id", vacanteId);
+        }
+        return vacante;
     }
 
     @Override

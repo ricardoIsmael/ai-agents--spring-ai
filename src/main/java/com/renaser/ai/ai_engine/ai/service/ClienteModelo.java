@@ -21,4 +21,19 @@ public interface ClienteModelo {
      * @param contenido    los datos del candidato, ya en JSON
      */
     RespuestaModelo preguntar(String agenteCodigo, String instruccion, String contenido);
+
+    /**
+     * Lo mismo, pero eligiendo si el modelo razona antes de contestar.
+     *
+     * <p><b>Es la palanca de velocidad del sistema.</b> Razonando, el modelo escribe unos
+     * 6.400 tokens por currículum y solo 1.300 son la respuesta: los otros 5.100 son
+     * pensamiento interno que nunca se guarda, y que se paga en segundos. Sin razonar la
+     * misma llamada baja de 48 a 19 segundos.
+     *
+     * <p>No sale gratis. Medido sobre los mismos diez currículums, sin razonar solo tres
+     * quedan en la misma posición y el modelo detecta menos riesgos críticos. Sirve para
+     * ordenar una tanda entera; no para decidir a quién se contrata.
+     */
+    RespuestaModelo preguntar(String agenteCodigo, String instruccion, String contenido,
+                              boolean razona);
 }

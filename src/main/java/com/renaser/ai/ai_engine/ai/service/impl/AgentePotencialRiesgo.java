@@ -80,7 +80,8 @@ public class AgentePotencialRiesgo implements AgenteSeleccion {
                 insumo.notaRespuestasAbiertas());
 
         EjecutorAgenteIa.Ejecutado<ResultadoPerfil> salida =
-                ejecutor.ejecutar(trabajo, OBJETIVO, FORMATO, insumo, ResultadoPerfil.class);
+                ejecutor.ejecutar(trabajo, OBJETIVO, FORMATO, insumo, ResultadoPerfil.class,
+                        !ColaCalificacionIaImpl.RAPIDA.equals(trabajo.getModo()));
         puente.cerrarPerfilIntegral(trabajo.getPostulacionId(), salida.ejecucionIaId(),
                 salida.resultado());
     }

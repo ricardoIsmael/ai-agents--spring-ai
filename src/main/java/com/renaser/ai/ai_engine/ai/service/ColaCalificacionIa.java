@@ -27,6 +27,46 @@ public interface ColaCalificacionIa {
     void encolarPerfilIntegral(Long postulacionId);
 
     /**
+     * Arranca la criba: leer el currículum y armar el Perfil de Talento con solo eso.
+     *
+     * <p>Es el mismo recorrido que el de arriba, pero para quien todavía no ha respondido
+     * nada. Sirve para ordenar una tanda de currículums recién llegados y ver a quién vale
+     * la pena invitar a la evaluación, que es la primera decisión real de una convocatoria.
+     *
+     * <p><b>El evaluador se salta solo</b>: sin respuestas no tiene qué puntuar. Y la nota
+     * del Perfil Integral sale entonces del currículum a solas, porque el reparto entre
+     * componentes reparte solo lo que existe.
+     *
+     * <p>Igual de idempotente: pedirla dos veces no duplica trabajos. Y si más tarde el
+     * candidato entrega su evaluación, {@link #encolarPerfilIntegral} recalifica con todo.
+     */
+    void encolarCribaCv(Long postulacionId);
+
+    /**
+     * Primera pasada: rápida, sobre todos.
+     *
+     * <p>Saca los datos del candidato y lo puntúa con el modelo que <b>no razona</b>. Una
+     * tanda de diez tarda medio minuto en vez de veinte, y sirve para lo que hace falta
+     * aquí: ordenar y separar la mitad de abajo, donde la decisión es fácil.
+     *
+     * <p>No sirve para decidir a quién se contrata. Medido sobre los mismos diez
+     * currículums, solo tres quedan en la misma posición que con el modelo que razona, y
+     * este ve menos riesgos críticos. Para eso está la segunda.
+     */
+    void encolarCribaRapida(Long postulacionId);
+
+    /**
+     * Segunda pasada: cuidadosa, solo sobre los de arriba.
+     *
+     * <p>Vuelve a puntuar con el modelo que razona y rehace el Perfil de Talento. Es la que
+     * manda: pisa las notas de la primera, que eran provisionales.
+     *
+     * <p>Se pide por separado y no se encadena a la primera a propósito. Cuál es «arriba»
+     * depende de cómo salió la tanda entera, y eso no se sabe hasta que la primera termina.
+     */
+    void encolarCribaFina(Long postulacionId);
+
+    /**
      * Ejecuta un trabajo concreto. Lo llama el listener de la cola, y también el sondeo.
      *
      * <p>No lanza excepción: el resultado —bien, a reintentar o fallido— queda escrito en
@@ -56,4 +96,13 @@ public interface ColaCalificacionIa {
      *         {@code SIN_EMPEZAR} si nadie ha pedido nada todavía.
      */
     String comoVa(Long postulacionId);
+
+    /**
+     * Con qué pasada está calificado ahora mismo: {@code FINA}, {@code RAPIDA} o vacío.
+     *
+     * <p>Lo pide la pantalla para no enseñar como definitivo lo que todavía es provisional.
+     * Una nota de la pasada rápida y una de la fina se ven igual —un número— y no valen lo
+     * mismo, así que hay que poder distinguirlas.
+     */
+    String pasadaDe(Long postulacionId);
 }

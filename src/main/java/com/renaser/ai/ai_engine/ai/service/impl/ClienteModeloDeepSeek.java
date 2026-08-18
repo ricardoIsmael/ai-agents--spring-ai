@@ -50,19 +50,29 @@ public class ClienteModeloDeepSeek implements ClienteModelo {
 
     private final ChatClient chatClient;
     private final String modelo;
+    private final String modeloRapido;
     private final Integer maxTokens;
 
     public ClienteModeloDeepSeek(ChatClient chatClient,
                                  @Value("${renaser.ai.chat.default-model}") String modelo,
+                                 @Value("${renaser.ai.chat.modelo-rapido}") String modeloRapido,
                                  @Value("${renaser.ai.chat.max-tokens}") Integer maxTokens) {
         this.chatClient = chatClient;
         this.modelo = modelo;
+        this.modeloRapido = modeloRapido;
         this.maxTokens = maxTokens;
     }
 
     @Override
     public RespuestaModelo preguntar(String agenteCodigo, String instruccion, String contenido) {
-        ChatResponse respuesta = llamar(agenteCodigo, instruccion, contenido);
+        return preguntar(agenteCodigo, instruccion, contenido, true);
+    }
+
+    @Override
+    public RespuestaModelo preguntar(String agenteCodigo, String instruccion, String contenido,
+                                     boolean razona) {
+        ChatResponse respuesta = llamar(agenteCodigo, instruccion, contenido,
+                razona ? modelo : modeloRapido);
 
         if (respuesta == null || respuesta.getResult() == null) {
             throw new IllegalStateException(
@@ -88,14 +98,25 @@ public class ClienteModeloDeepSeek implements ClienteModelo {
                 uso == null ? null : uso.getCompletionTokens());
     }
 
-    private ChatResponse llamar(String agenteCodigo, String instruccion, String contenido) {
+    /**
+     * El modelo que se pide viaja como parámetro y no se toma del campo: es lo que
+     * distingue una pasada de la otra.
+     *
+     * <p><b>Lo que se registra en la bitácora es el modelo que el proveedor dice haber
+     * usado</b>, no el que se pidió. Los dos nombres pueden resolver al mismo modelo con
+     * distinto modo de trabajo, y entonces la bitácora enseña el mismo nombre en las dos
+     * pasadas aunque la respuesta y el tiempo sean muy distintos. Los tokens de salida sí
+     * lo delatan: es ahí donde se ve si razonó.
+     */
+    private ChatResponse llamar(String agenteCodigo, String instruccion, String contenido,
+                                String queModelo) {
         try {
             return chatClient.prompt()
                     .system(instruccion)
                     .user(contenido)
                     .options(DeepSeekChatOptions.builder()
                             .responseFormat(JSON)
-                            .model(modelo)
+                            .model(queModelo)
                             .maxTokens(maxTokens))
                     .call()
                     .chatResponse();

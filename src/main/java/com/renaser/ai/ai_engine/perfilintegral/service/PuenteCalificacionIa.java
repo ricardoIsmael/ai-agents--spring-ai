@@ -1,6 +1,8 @@
 package com.renaser.ai.ai_engine.perfilintegral.service;
 
 import com.renaser.ai.ai_engine.perfilintegral.dto.DtosCalificacionIa.InsumoCv;
+import com.renaser.ai.ai_engine.perfilintegral.dto.DtosCalificacionIa.InsumoDatos;
+import com.renaser.ai.ai_engine.perfilintegral.dto.DtosCalificacionIa.ResultadoDatos;
 import com.renaser.ai.ai_engine.perfilintegral.dto.DtosCalificacionIa.InsumoPerfil;
 import com.renaser.ai.ai_engine.perfilintegral.dto.DtosCalificacionIa.InsumoRespuestas;
 import com.renaser.ai.ai_engine.perfilintegral.dto.DtosCalificacionIa.ResultadoCv;
@@ -32,6 +34,28 @@ public interface PuenteCalificacionIa {
 
     /** La organización de una postulación: la necesita cada fila de {@code trabajo_ia}. */
     Long organizacionDe(Long postulacionId);
+
+    /**
+     * Si esta postulación tiene una evaluación entregada de la que salgan respuestas.
+     *
+     * <p>Lo pregunta la cola para saber si el evaluador tiene trabajo. Sin evaluación —una
+     * criba en la que solo se leyó el currículum— llamarlo gastaría una petición al modelo
+     * para no puntuar nada, así que la fila se lo salta y pasa directo al Perfil de Talento.
+     */
+    boolean tieneEvaluacionEntregada(Long postulacionId);
+
+    // ==================== DATOS_CV ====================
+
+    /** El currículum recortado, para el agente que solo saca datos y no puntúa. */
+    InsumoDatos insumoDatos(Long postulacionId);
+
+    /**
+     * Guarda la ficha de datos del candidato.
+     *
+     * <p>La rehace entera cada vez. No hay ajuste a mano que respetar aquí: son datos
+     * copiados del currículum, no notas.
+     */
+    void guardarDatos(Long postulacionId, Long ejecucionIaId, ResultadoDatos resultado);
 
     // ==================== EVIDENCIA_CV ====================
 
