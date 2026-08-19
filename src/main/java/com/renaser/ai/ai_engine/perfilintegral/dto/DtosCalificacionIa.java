@@ -43,6 +43,27 @@ public final class DtosCalificacionIa {
             List<CriterioConPeso> criterios) {
     }
 
+    /** Lo que se le da al agente que solo extrae datos: el currículum y poco más. */
+    public record InsumoDatos(String puesto, String curriculum) {
+    }
+
+    /**
+     * La ficha que devuelve. Todo puede venir en null y eso es correcto: el currículum de
+     * quien no puso su teléfono no tiene teléfono, y ahí no hay nada que adivinar.
+     */
+    public record ResultadoDatos(
+            String nombre,
+            String email,
+            String telefono,
+            String perfilResumen,
+            List<String> habilidades,
+            Integer experienciaMesesTotal,
+            String ultimoPuesto,
+            String ultimaEmpresa,
+            Integer ultimaMesesDuracion,
+            String educacionMaxima) {
+    }
+
     public record CriterioConPeso(String codigo, String nombre, String queMide, BigDecimal peso) {
     }
 

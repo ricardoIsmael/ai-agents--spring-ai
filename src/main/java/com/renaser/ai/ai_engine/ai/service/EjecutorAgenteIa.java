@@ -29,6 +29,16 @@ public interface EjecutorAgenteIa {
     <T> Ejecutado<T> ejecutar(TrabajoIa trabajo, String objetivo, String formato,
                               Object insumo, Class<T> tipo);
 
+    /**
+     * Lo mismo, eligiendo si el modelo razona antes de contestar.
+     *
+     * <p>Razonar es lo que hace que una llamada tarde 48 segundos en vez de 19. Los agentes
+     * que puntúan lo deciden por el modo de su trabajo; el que solo extrae datos nunca
+     * razona, porque copiar un dato de un texto no tiene nada que deliberar.
+     */
+    <T> Ejecutado<T> ejecutar(TrabajoIa trabajo, String objetivo, String formato,
+                              Object insumo, Class<T> tipo, boolean razona);
+
     /** El resultado leído, y el id de la fila de bitácora con que hay que sellarlo. */
     record Ejecutado<T>(Long ejecucionIaId, T resultado) {
     }

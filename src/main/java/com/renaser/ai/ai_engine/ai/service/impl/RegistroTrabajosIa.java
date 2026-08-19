@@ -40,9 +40,12 @@ public class RegistroTrabajosIa {
      */
     @Transactional
     public Optional<TrabajoIa> crearSiHaceFalta(Long organizacionId, Long postulacionId,
-                                                String agenteCodigo) {
+                                                String agenteCodigo, String modo) {
+        // La búsqueda incluye el modo: sin eso la pasada fina encontraría el trabajo que ya
+        // hizo la rápida y no correría nunca, que es justo lo contrario de lo que se pide.
         Optional<TrabajoIa> existente = trabajos
-                .findFirstByPostulacionIdAndAgenteCodigoOrderByIdDesc(postulacionId, agenteCodigo);
+                .findFirstByPostulacionIdAndAgenteCodigoAndModoOrderByIdDesc(
+                        postulacionId, agenteCodigo, modo);
         if (existente.isPresent() && !"FALLIDO".equals(existente.get().getEstado())) {
             return Optional.empty();
         }
@@ -51,6 +54,7 @@ public class RegistroTrabajosIa {
         return Optional.of(trabajos.save(TrabajoIa.builder()
                 .organizacionId(organizacionId)
                 .agenteCodigo(agenteCodigo)
+                .modo(modo)
                 .postulacionId(postulacionId)
                 .referenciaTabla("postulacion")
                 .referenciaId(postulacionId)
@@ -68,20 +72,14 @@ public class RegistroTrabajosIa {
      */
     @Transactional
     public Optional<TrabajoIa> tomar(Long trabajoIaId) {
-        TrabajoIa trabajo = trabajos.findById(trabajoIaId).orElse(null);
-        if (trabajo == null) {
-            log.warn("Llegó un mensaje para el trabajo {}, que ya no existe", trabajoIaId);
+        // El cambio de estado y la condición van juntos en una sola sentencia: es lo que
+        // impide que dos consumidores llamen al modelo por el mismo candidato.
+        if (trabajos.tomarSiEstaPendiente(trabajoIaId, Instant.now()) == 0) {
+            log.info("El trabajo {} ya no estaba pendiente: lo tomó otro, o ya terminó",
+                    trabajoIaId);
             return Optional.empty();
         }
-        if (!"PENDIENTE".equals(trabajo.getEstado())) {
-            log.info("El trabajo {} está en {}, no se vuelve a ejecutar",
-                    trabajoIaId, trabajo.getEstado());
-            return Optional.empty();
-        }
-        trabajo.setEstado("EN_CURSO");
-        trabajo.setIntentos(trabajo.getIntentos() == null ? 1 : trabajo.getIntentos() + 1);
-        trabajo.setTomadoEn(Instant.now());
-        return Optional.of(trabajos.save(trabajo));
+        return trabajos.findById(trabajoIaId);
     }
 
     @Transactional

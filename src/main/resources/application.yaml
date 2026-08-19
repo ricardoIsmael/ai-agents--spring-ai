@@ -46,6 +46,22 @@ spring:
     port: 5672
     username: guest
     password: guest
+    listener:
+      simple:
+        # Cuántos candidatos se califican a la vez.
+        #
+        # Con el valor por defecto —uno— una tanda de diez currículums tarda lo que suman
+        # las veinte llamadas al modelo, una detrás de otra: unos trece minutos. En paralelo
+        # tarda lo que tarda el candidato más lento, que es alrededor de un minuto.
+        #
+        # No hace falta pensar en hilos del sistema: son hilos virtuales, y el trabajo es
+        # esperar a una API, no calcular. El techo real lo pone el proveedor con su límite
+        # de peticiones por minuto; si empiezan a salir errores 429, se baja este número.
+        concurrency: 8
+        max-concurrency: 12
+        # Uno por consumidor: cada trabajo tarda medio minuto y repartirlos de a montones
+        # deja a unos consumidores con cola y a otros de brazos cruzados.
+        prefetch: 1
   ai:
     model:
       chat: deepseek
@@ -89,6 +105,11 @@ renaser:
   ai:
     chat:
       default-model: deepseek-v4-flash
+      # El de la primera pasada. Contesta sin razonar: 19 segundos por currículum en vez de
+      # 48, porque se ahorra los ~5.000 tokens de pensamiento interno que el otro gasta
+      # antes de escribir. A cambio ordena distinto el medio de la tabla y ve menos riesgos,
+      # así que sirve para ordenar la tanda, no para decidir a quién se contrata.
+      modelo-rapido: deepseek-chat
       # 4096 truncaba el envelope: V4 Pro razona y esos tokens cuentan como salida.
       max-tokens: 16384
       max-intentos: 3

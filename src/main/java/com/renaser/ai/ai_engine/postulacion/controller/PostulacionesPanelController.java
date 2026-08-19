@@ -5,6 +5,8 @@ import com.renaser.ai.ai_engine.postulacion.service.ServicioPostulacionesPanel;
 import com.renaser.ai.ai_engine.postulacion.dto.DtosPostulacion.*;
 import com.renaser.ai.ai_engine.perfilintegral.dto.DtosPerfilIntegral.CalificacionEncoladaResponse;
 import com.renaser.ai.ai_engine.perfilintegral.dto.DtosPerfilIntegral.PerfilIntegralResponse;
+import com.renaser.ai.ai_engine.perfilintegral.dto.DtosPerfilIntegral.PasadaEncolada;
+import com.renaser.ai.ai_engine.perfilintegral.dto.DtosPerfilIntegral.RankingVacante;
 import com.renaser.ai.ai_engine.perfilintegral.service.ServicioPerfilIntegralPanel;
 import com.renaser.ai.ai_engine.seguridad.service.Permisos;
 import io.swagger.v3.oas.annotations.Operation;
@@ -45,6 +47,33 @@ public class PostulacionesPanelController {
         return servicio.embudo(permisos.actual(), id);
     }
 
+    @GetMapping("/vacantes/{id}/ranking")
+    @PreAuthorize("@permisos.tiene('ver_embudo')")
+    @Operation(summary = "La tanda entera ordenada de más apto a menos: grupo de prioridad, "
+            + "nota, y las ocho notas del currículum de cada uno. Incluye a quien todavía no "
+            + "tiene nota, porque un candidato sin calificar no puede desaparecer de la lista")
+    public RankingVacante ranking(@PathVariable Long id) {
+        return perfilIntegral.ranking(permisos.actual(), id);
+    }
+
+    @PostMapping("/vacantes/{id}/criba-rapida")
+    @PreAuthorize("@permisos.tiene('ajustar_nota')")
+    @Operation(summary = "Primera pasada sobre la tanda entera: el modelo contesta sin razonar "
+            + "y en paralelo. Diez currículums tardan alrededor de medio minuto. Sirve para "
+            + "ordenar, no para decidir")
+    public PasadaEncolada cribaRapida(@PathVariable Long id) {
+        return perfilIntegral.cribaRapida(permisos.actual(), id);
+    }
+
+    @PostMapping("/vacantes/{id}/criba-fina")
+    @PreAuthorize("@permisos.tiene('ajustar_nota')")
+    @Operation(summary = "Segunda pasada, solo sobre la parte alta de la tanda: el modelo que "
+            + "razona vuelve a calificarlos y pisa las notas provisionales. Cuánta parte, lo "
+            + "dice el parámetro «porcentaje_criba_fina»")
+    public PasadaEncolada cribaFina(@PathVariable Long id) {
+        return perfilIntegral.cribaFina(permisos.actual(), id);
+    }
+
     @GetMapping("/postulaciones/{id}")
     @PreAuthorize("@permisos.tiene('abrir_ficha_candidato')")
     @Operation(summary = "La ficha completa de una postulación")
@@ -77,6 +106,15 @@ public class PostulacionesPanelController {
             + "responde al momento: la llamada al modelo tarda decenas de segundos")
     public CalificacionEncoladaResponse calificarPerfilIntegral(@PathVariable Long id) {
         return perfilIntegral.recalificar(permisos.actual(), id);
+    }
+
+    @PostMapping("/postulaciones/{id}/criba-cv")
+    @PreAuthorize("@permisos.tiene('ajustar_nota')")
+    @Operation(summary = "Criba: que la IA lea solo el currículum y arme el retrato con eso. "
+            + "Es lo que se pide con una tanda recién llegada, antes de que nadie responda "
+            + "la evaluación")
+    public CalificacionEncoladaResponse cribarCv(@PathVariable Long id) {
+        return perfilIntegral.cribarCv(permisos.actual(), id);
     }
 
     @GetMapping("/postulaciones/{id}/historial")

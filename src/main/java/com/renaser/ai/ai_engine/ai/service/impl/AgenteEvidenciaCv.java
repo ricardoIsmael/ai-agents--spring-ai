@@ -73,7 +73,8 @@ public class AgenteEvidenciaCv implements AgenteSeleccion {
                 trabajo.getPostulacionId(), insumo.curriculum().length(), insumo.criterios().size());
 
         EjecutorAgenteIa.Ejecutado<ResultadoCv> salida =
-                ejecutor.ejecutar(trabajo, OBJETIVO, FORMATO, insumo, ResultadoCv.class);
+                ejecutor.ejecutar(trabajo, OBJETIVO, FORMATO, insumo, ResultadoCv.class,
+                        !ColaCalificacionIaImpl.RAPIDA.equals(trabajo.getModo()));
         puente.guardarEvidenciaCv(trabajo.getPostulacionId(), salida.ejecucionIaId(),
                 salida.resultado());
     }
