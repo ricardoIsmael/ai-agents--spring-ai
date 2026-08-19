@@ -23,6 +23,7 @@ import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -59,9 +60,27 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p><b>Necesita {@code application-secrets.yaml} en la raíz</b>, con la clave del proveedor.
  * Si falta, la primera prueba falla diciendo exactamente eso, que es mejor que saltarse la
  * prueba en silencio y creer que todo está bien.
+ *
+ * <p><b>No corre sola.</b> Hace falta pedirla:
+ *
+ * <pre>{@code
+ * RENASER_IA_REAL=si ./mvnw test -Dtest=CalificacionIaRealIT
+ * }</pre>
+ *
+ * <p>La bandera existe porque el {@code pom.xml} mete los {@code *IT.java} en la misma tanda
+ * que el resto, así que antes esta prueba se disparaba con cualquier {@code mvn test}. Quien
+ * clonara el repositorio y lanzara las pruebas gastaba dinero sin saberlo, y si la cuenta no
+ * tenía saldo se llevaba cuatro fallos con un 402 que no explicaba nada.
+ *
+ * <p>Se apaga por defecto y no al revés a propósito: <b>olvidarse de encenderla no cuesta
+ * nada; olvidarse de apagarla, sí.</b> Y lo que aquí se comprueba —que el contrato con el
+ * proveedor sigue en pie— es algo que se mira antes de publicar, no en cada compilación.
  */
 @SpringBootTest
 @Testcontainers
+@EnabledIfEnvironmentVariable(named = "RENASER_IA_REAL", matches = ".+",
+        disabledReason = "Llama a DeepSeek de verdad y gasta saldo. "
+                + "Para lanzarla: RENASER_IA_REAL=si")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class CalificacionIaRealIT {
 

@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -146,8 +147,31 @@ public class ColaCalificacionIaImpl implements ColaCalificacionIa {
     }
 
     @Override
+    public Map<Long, Estado> estadoDe(List<Long> postulacionIds) {
+        if (postulacionIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, List<TrabajoIa>> porPostulacion =
+                trabajos.findByPostulacionIdInOrderByIdAsc(postulacionIds).stream()
+                        .collect(Collectors.groupingBy(TrabajoIa::getPostulacionId));
+
+        Map<Long, Estado> salida = new HashMap<>();
+        for (Long id : postulacionIds) {
+            List<TrabajoIa> suyos = porPostulacion.getOrDefault(id, List.of());
+            // Quien no tiene trabajos entra igual, con SIN_EMPEZAR: el ranking no puede
+            // dejar fuera a un candidato porque nadie haya pedido calificarlo todavía.
+            salida.put(id, new Estado(comoVan(suyos), pasadaDe(suyos)));
+        }
+        return salida;
+    }
+
+    @Override
     public String comoVa(Long postulacionId) {
-        List<TrabajoIa> suyos = trabajos.findByPostulacionIdOrderByIdAsc(postulacionId);
+        return comoVan(trabajos.findByPostulacionIdOrderByIdAsc(postulacionId));
+    }
+
+    /** La cuenta, ya con los trabajos delante. La comparten el uno y la tanda entera. */
+    private String comoVan(List<TrabajoIa> suyos) {
         if (suyos.isEmpty()) {
             return "SIN_EMPEZAR";
         }
@@ -178,8 +202,12 @@ public class ColaCalificacionIaImpl implements ColaCalificacionIa {
 
     @Override
     public String pasadaDe(Long postulacionId) {
+        return pasadaDe(trabajos.findByPostulacionIdOrderByIdAsc(postulacionId));
+    }
+
+    private String pasadaDe(List<TrabajoIa> suyos) {
         String ultimo = ORDEN.get(ORDEN.size() - 1);
-        List<TrabajoIa> hechos = trabajos.findByPostulacionIdOrderByIdAsc(postulacionId).stream()
+        List<TrabajoIa> hechos = suyos.stream()
                 .filter(t -> ultimo.equals(t.getAgenteCodigo()) && "TERMINADO".equals(t.getEstado()))
                 .toList();
         // La fina manda aunque la rápida sea posterior: es la que pisa las notas.
@@ -234,6 +262,12 @@ public class ColaCalificacionIaImpl implements ColaCalificacionIa {
                 && !puente.tieneEvaluacionEntregada(terminado.getPostulacionId())) {
             log.info("La postulación {} no tiene evaluación entregada: el evaluador se salta",
                     terminado.getPostulacionId());
+            // Si el evaluador fuera el último de la fila no habría a quién saltar: se
+            // acabó el recorrido. Hoy va en medio, pero la fila puede crecer y salirse
+            // del índice aquí sería un fallo que solo aparecería ese día.
+            if (posicion + 2 >= orden.size()) {
+                return;
+            }
             siguiente = orden.get(posicion + 2);
         }
         encolar(terminado.getPostulacionId(), siguiente, terminado.getModo());

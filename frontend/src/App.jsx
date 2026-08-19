@@ -64,6 +64,13 @@ function Entrada({ onEntrar }) {
       </p>
       <label htmlFor="uid">Tu id de RENASER OS</label>
       <input id="uid" value={uid} onChange={(e) => setUid(e.target.value)} autoFocus />
+      {api.ES_DEMO && (
+        <div className="aviso">
+          Estás viendo una foto de los resultados, no el sistema en marcha. Los
+          números y los retratos son los que la IA produjo el día que se exportó;
+          desde aquí no se puede pedir una calificación nueva.
+        </div>
+      )}
       {error && <div className="aviso error">{error}</div>}
       {aviso && <div className="aviso">{aviso}</div>}
       <button type="submit" disabled={entrando || !uid.trim()}>
@@ -152,14 +159,20 @@ export default function App() {
           }}>
             {vacantes.map((v) => <option key={v.id} value={v.id}>{v.titulo}</option>)}
           </select>
-          <button onClick={() => pasada(api.cribaRapida)} disabled={ocupado || !vacanteId}>
-            1ª pasada · rápida
-          </button>
-          <button onClick={() => pasada(api.cribaFina)} disabled={ocupado || !vacanteId}>
-            2ª pasada · a fondo
-          </button>
+          {!api.ES_DEMO && (
+            <>
+              <button onClick={() => pasada(api.cribaRapida)} disabled={ocupado || !vacanteId}>
+                1ª pasada · rápida
+              </button>
+              <button onClick={() => pasada(api.cribaFina)} disabled={ocupado || !vacanteId}>
+                2ª pasada · a fondo
+              </button>
+            </>
+          )}
           <button onClick={recargar}>Actualizar</button>
-          <button onClick={() => { api.cerrarSesion(); setDentro(false) }}>Salir</button>
+          {!api.ES_DEMO && (
+            <button onClick={() => { api.cerrarSesion(); setDentro(false) }}>Salir</button>
+          )}
         </div>
       </div>
 
@@ -203,6 +216,7 @@ export default function App() {
             <thead>
               <tr>
                 <th>#</th>
+                <th />
                 <th>Candidato</th>
                 <th>Último puesto</th>
                 <th className="num">Exp.</th>
@@ -225,6 +239,28 @@ export default function App() {
                     onClick={() => setElegida(f)}
                   >
                     <td className="posicion">{f.puesto}</td>
+                    <td className="iconos">
+                      {/* El clic no sube a la fila, o se abrirían las dos cosas a la vez. */}
+                      {f.cvUrl && (
+                        <a
+                          href={f.cvUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="icono"
+                          title={`Ver el currículum de ${f.datos?.nombre || f.candidato}`}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          👁
+                        </a>
+                      )}
+                      <button
+                        className="icono"
+                        title="Ver el puntaje y lo que la IA encontró"
+                        onClick={(e) => { e.stopPropagation(); setElegida(f) }}
+                      >
+                        📊
+                      </button>
+                    </td>
                     <td>
                       {f.datos?.nombre || f.candidato}
                       {f.pasada === 'RAPIDA' && (
@@ -256,7 +292,17 @@ export default function App() {
             </p>
           )}
 
-          {elegida && <Ficha fila={elegida} onCambio={recargar} />}
+          {elegida && (
+            <Ficha
+              // La clave hace que cambiar de candidato monte una ventana nueva en vez de
+              // reusar la anterior, que se quedaría con el retrato del otro medio segundo.
+              key={elegida.postulacionId}
+              fila={elegida}
+              onCambio={recargar}
+              onCerrar={() => setElegida(null)}
+              carpetaCv={vacantes.find((v) => v.id === vacanteId)?.carpetaCv}
+            />
+          )}
         </>
       )}
     </div>

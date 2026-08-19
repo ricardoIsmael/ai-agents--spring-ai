@@ -3,6 +3,7 @@ package com.renaser.ai.ai_engine.perfilintegral.service.impl;
 import com.renaser.ai.ai_engine.ai.exception.ResourceNotFoundException;
 import com.renaser.ai.ai_engine.ai.service.ColaCalificacionIa;
 import com.renaser.ai.ai_engine.archivo.entity.Archivo;
+import com.renaser.ai.ai_engine.archivo.repository.ArchivoRepository;
 import com.renaser.ai.ai_engine.archivo.service.AlmacenArchivos;
 import com.renaser.ai.ai_engine.auditoria.service.ServicioAuditoria;
 import com.renaser.ai.ai_engine.perfilintegral.dto.DtosPerfilIntegral.AlertaResponse;
@@ -14,6 +15,7 @@ import com.renaser.ai.ai_engine.perfilintegral.dto.DtosPerfilIntegral.NotaCriter
 import com.renaser.ai.ai_engine.perfilintegral.dto.DtosPerfilIntegral.PasadaEncolada;
 import com.renaser.ai.ai_engine.perfilintegral.dto.DtosPerfilIntegral.PerfilIntegralResponse;
 import com.renaser.ai.ai_engine.perfilintegral.dto.DtosPerfilIntegral.RankingVacante;
+import com.renaser.ai.ai_engine.perfilintegral.entity.Alerta;
 import com.renaser.ai.ai_engine.perfilintegral.entity.Criterio;
 import com.renaser.ai.ai_engine.perfilintegral.entity.HallazgoPerfil;
 import com.renaser.ai.ai_engine.perfilintegral.entity.NotaCriterio;
@@ -59,6 +61,7 @@ import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -93,6 +96,7 @@ public class ServicioPerfilIntegralPanelImpl implements ServicioPerfilIntegralPa
     private final UsuarioRepository usuarios;
     private final PersonaRepository personas;
     private final PuestoRepository puestos;
+    private final ArchivoRepository archivos;
     private final AlmacenArchivos almacen;
     private final ServicioAuditoria auditoria;
     private final ColaCalificacionIa cola;
@@ -117,9 +121,10 @@ public class ServicioPerfilIntegralPanelImpl implements ServicioPerfilIntegralPa
                 .stream()
                 .collect(Collectors.toMap(NotaCriterio::getCriterioId, Function.identity(),
                         (a, b) -> a));
+        Map<Long, BigDecimal> pesos = pesosDe(postulacion);
         List<NotaCriterioResponse> notas = criterios
                 .findByEtapaCodigoAndVersionPlantillaPruebaIdIsNullOrderByOrden(ETAPA).stream()
-                .map(c -> pintarNota(c, notaPorCriterio.get(c.getId())))
+                .map(c -> pintarNota(c, notaPorCriterio.get(c.getId()), pesos))
                 .toList();
 
         List<HallazgoResponse> lista = perfil == null ? List.of()
@@ -303,40 +308,74 @@ public class ServicioPerfilIntegralPanelImpl implements ServicioPerfilIntegralPa
                         EstadoPostulacion::getNombre, (a, b) -> a));
 
         List<Postulacion> suyas = postulaciones.findByVacanteIdOrderByCreadoEnDesc(vacanteId);
-        // Las fichas de datos de golpe: una consulta por fila serían diez consultas para
-        // pintar diez filas.
-        Map<Long, DatoCv> fichas = datosCv
-                .findByPostulacionIdIn(suyas.stream().map(Postulacion::getId).toList()).stream()
-                .collect(Collectors.toMap(DatoCv::getPostulacionId, Function.identity(),
-                        (a, b) -> a));
+        List<Long> ids = suyas.stream().map(Postulacion::getId).toList();
+
+        // ============================================================================
+        // Todo lo de la tanda, en bloque.
+        //
+        // Antes esto pedía once cosas por candidato dentro del bucle. Con cien postulantes
+        // eran más de mil consultas para pintar una pantalla, y justamente esta pantalla
+        // existe para mirar la tanda entera de una vez. Ahora son once consultas en total,
+        // no once por fila: cada una trae lo de todos y el bucle solo busca en memoria.
+        // ============================================================================
+        Map<Long, DatoCv> fichas = porPostulacion(datosCv.findByPostulacionIdIn(ids),
+                DatoCv::getPostulacionId);
+        Map<Long, ColaCalificacionIa.Estado> estados = cola.estadoDe(ids);
+        Map<Long, PerfilTalento> perfilPorPostulacion =
+                porPostulacion(perfiles.findByPostulacionIdIn(ids), PerfilTalento::getPostulacionId);
+        Map<Long, List<HallazgoPerfil>> hallazgosPorPerfil = hallazgos
+                .findByPerfilTalentoIdIn(perfilPorPostulacion.values().stream()
+                        .map(PerfilTalento::getId).toList()).stream()
+                .collect(Collectors.groupingBy(HallazgoPerfil::getPerfilTalentoId));
+        Map<Long, List<NotaCriterio>> notasPorPostulacion = notasCriterio.findByPostulacionIdIn(ids)
+                .stream().collect(Collectors.groupingBy(NotaCriterio::getPostulacionId));
+        Map<Long, NotaEtapa> etapaPorPostulacion = porPostulacion(
+                notasEtapa.findByPostulacionIdInAndEtapaCodigo(ids, ETAPA),
+                NotaEtapa::getPostulacionId);
+        Map<Long, Long> alertasPorPostulacion = alertas.findByPostulacionIdIn(ids).stream()
+                .collect(Collectors.groupingBy(Alerta::getPostulacionId, Collectors.counting()));
+        Map<Long, Cv> cvPorPostulacion = porPostulacion(cvs.findByPostulacionIdIn(ids),
+                Cv::getPostulacionId);
+
+        Map<Long, Usuario> usuariosPorId = porId(
+                usuarios.findAllById(suyas.stream().map(Postulacion::getUsuarioId).toList()),
+                Usuario::getId);
+        Map<Long, Persona> personasPorId = porId(
+                personas.findAllById(usuariosPorId.values().stream()
+                        .map(Usuario::getPersonaId).filter(Objects::nonNull).toList()),
+                Persona::getId);
+        Map<Long, Archivo> archivosPorId = porId(
+                archivos.findAllById(cvPorPostulacion.values().stream()
+                        .map(Cv::getArchivoOriginalId).filter(Objects::nonNull).toList()),
+                Archivo::getId);
 
         List<FilaRanking> filas = new ArrayList<>();
         int calificados = 0, enCurso = 0, fallidos = 0, conFina = 0;
 
         for (Postulacion p : suyas) {
-            String comoVa = cola.comoVa(p.getId());
+            ColaCalificacionIa.Estado estado = estados.get(p.getId());
+            String comoVa = estado == null ? "SIN_EMPEZAR" : estado.comoVa();
             if ("TERMINADA".equals(comoVa)) calificados++;
             else if ("EN_CURSO".equals(comoVa)) enCurso++;
             else if ("FALLIDA".equals(comoVa)) fallidos++;
 
-            String pasada = cola.pasadaDe(p.getId());
+            String pasada = estado == null ? null : estado.pasada();
             if ("FINA".equals(pasada)) conFina++;
 
-            PerfilTalento perfil = perfiles.findByPostulacionId(p.getId()).orElse(null);
+            PerfilTalento perfil = perfilPorPostulacion.get(p.getId());
             List<HallazgoPerfil> suyos = perfil == null ? List.of()
-                    : hallazgos.findByPerfilTalentoId(perfil.getId());
+                    : hallazgosPorPerfil.getOrDefault(perfil.getId(), List.of());
 
-            Map<Long, NotaCriterio> notaPorCriterio = notasCriterio.findByPostulacionId(p.getId())
-                    .stream()
+            Map<Long, NotaCriterio> notaPorCriterio = notasPorPostulacion
+                    .getOrDefault(p.getId(), List.of()).stream()
                     .collect(Collectors.toMap(NotaCriterio::getCriterioId, Function.identity(),
                             (a, b) -> a));
             List<NotaCriterioResponse> notas = delCurriculum.stream()
-                    .map(c -> pintarNota(c, notaPorCriterio.get(c.getId())))
+                    .map(c -> pintarNota(c, notaPorCriterio.get(c.getId()), pesos))
                     .toList();
 
-            Usuario usuario = usuarios.findById(p.getUsuarioId()).orElse(null);
-            Persona persona = usuario == null ? null
-                    : personas.findById(usuario.getPersonaId()).orElse(null);
+            Usuario usuario = usuariosPorId.get(p.getUsuarioId());
+            Persona persona = usuario == null ? null : personasPorId.get(usuario.getPersonaId());
 
             filas.add(new FilaRanking(
                     0,
@@ -348,10 +387,10 @@ public class ServicioPerfilIntegralPanelImpl implements ServicioPerfilIntegralPa
                     nombreEstado.getOrDefault(p.getEstadoCodigo(), p.getEstadoCodigo()),
                     comoVa,
                     pasada,
+                    nombreDelArchivo(cvPorPostulacion.get(p.getId()), archivosPorId),
                     pintarDatos(fichas.get(p.getId())),
                     p.getGrupoPrioridad(),
-                    notasEtapa.findByPostulacionIdAndEtapaCodigo(p.getId(), ETAPA)
-                            .map(NotaEtapa::getPuntaje).orElse(null),
+                    etapa(etapaPorPostulacion.get(p.getId())),
                     notaCurriculum(notaPorCriterio.values(), pesos),
                     perfil == null ? null : perfil.getAdecuacion(),
                     perfil == null ? null : perfil.getPotencial(),
@@ -360,7 +399,7 @@ public class ServicioPerfilIntegralPanelImpl implements ServicioPerfilIntegralPa
                     perfil == null ? null : perfil.getResumen(),
                     (int) suyos.stream().filter(h -> "RIESGO_CRITICO".equals(h.getTipo())).count(),
                     (int) suyos.stream().filter(h -> "FORTALEZA".equals(h.getTipo())).count(),
-                    alertas.findByPostulacionId(p.getId()).size(),
+                    alertasPorPostulacion.getOrDefault(p.getId(), 0L).intValue(),
                     perfil == null ? null : perfil.getActualizadoEn(),
                     notas));
         }
@@ -379,7 +418,7 @@ public class ServicioPerfilIntegralPanelImpl implements ServicioPerfilIntegralPa
             FilaRanking f = filas.get(i);
             numeradas.add(new FilaRanking(i + 1, f.postulacionId(), f.uuid(), f.candidato(),
                     f.correo(), f.estado(), f.estadoNombre(), f.estadoCalificacion(),
-                    f.pasada(), f.datos(),
+                    f.pasada(), f.archivoNombre(), f.datos(),
                     f.grupoPrioridad(), f.notaEtapa(), f.notaCurriculum(), f.adecuacion(),
                     f.potencial(), f.altoRendimiento(), f.confianzaEvidencia(), f.resumen(),
                     f.riesgosCriticos(), f.fortalezas(), f.alertas(), f.actualizadoEn(),
@@ -390,6 +429,44 @@ public class ServicioPerfilIntegralPanelImpl implements ServicioPerfilIntegralPa
                 puesto == null ? null : puesto.getNombre(),
                 puesto == null ? null : puesto.getNivelPuestoCodigo(),
                 numeradas.size(), conFina, calificados, enCurso, fallidos, numeradas);
+    }
+
+    /**
+     * Cómo se llamaba el archivo que subió.
+     *
+     * <p>No se sirve el currículum desde aquí: el nombre basta para encontrarlo donde
+     * viva —la carpeta compartida del equipo—, y así el archivo no tiene que salir por un
+     * segundo sitio con su propio control de acceso.
+     */
+    private String nombreDelArchivo(Long postulacionId) {
+        return cvs.findByPostulacionId(postulacionId)
+                .map(Cv::getArchivoOriginalId)
+                .flatMap(archivos::findById)
+                .map(Archivo::getNombreOriginal)
+                .orElse(null);
+    }
+
+    /** Lo mismo, pero con lo de la tanda ya traído: aquí dentro no se toca la base. */
+    private String nombreDelArchivo(Cv cv, Map<Long, Archivo> archivosPorId) {
+        if (cv == null || cv.getArchivoOriginalId() == null) return null;
+        Archivo archivo = archivosPorId.get(cv.getArchivoOriginalId());
+        return archivo == null ? null : archivo.getNombreOriginal();
+    }
+
+    private BigDecimal etapa(NotaEtapa nota) {
+        return nota == null ? null : nota.getPuntaje();
+    }
+
+    /** Indexa por la postulación a la que pertenece cada fila. */
+    private <T> Map<Long, T> porPostulacion(List<T> filas, Function<T, Long> deQuien) {
+        return filas.stream().collect(Collectors.toMap(deQuien, Function.identity(), (a, b) -> a));
+    }
+
+    /** Indexa por el id propio de la fila. */
+    private <T> Map<Long, T> porId(Iterable<T> filas, Function<T, Long> id) {
+        Map<Long, T> salida = new java.util.HashMap<>();
+        filas.forEach(f -> salida.putIfAbsent(id.apply(f), f));
+        return salida;
     }
 
     /** La ficha del candidato, o nada si el agente que la saca todavía no ha corrido. */
@@ -474,13 +551,32 @@ public class ServicioPerfilIntegralPanelImpl implements ServicioPerfilIntegralPa
 
     // ============ Apoyo ============
 
-    private NotaCriterioResponse pintarNota(Criterio criterio, NotaCriterio nota) {
+    private NotaCriterioResponse pintarNota(Criterio criterio, NotaCriterio nota,
+                                           Map<Long, BigDecimal> pesos) {
         return new NotaCriterioResponse(
                 criterio.getNombre(),
                 nota == null ? null : nota.getPuntaje(),
                 criterio.getPuntos(),
+                pesos.get(criterio.getId()),
                 nota == null ? null : nota.getExplicacion(),
                 nota == null ? null : nota.getOrigen());
+    }
+
+    /**
+     * Cuanto pesa cada criterio para esta postulacion.
+     *
+     * <p>Los pesos son los de la version de la vacante y del nivel de su puesto, no los de
+     * la ultima version publicada: una nota de hace seis meses tiene que seguir
+     * explicandose con los pesos con que se calculo.
+     */
+    private Map<Long, BigDecimal> pesosDe(Postulacion postulacion) {
+        return vacantes.findById(postulacion.getVacanteId())
+                .flatMap(v -> puestos.findById(v.getPuestoId())
+                        .map(pu -> pesosCriterio.findByVersionPesosIdAndNivelPuestoCodigo(
+                                v.getVersionPesosId(), pu.getNivelPuestoCodigo())))
+                .map(lista -> lista.stream().collect(Collectors.toMap(
+                        PesoCriterio::getCriterioId, PesoCriterio::getPeso, (a, b) -> a)))
+                .orElseGet(Map::of);
     }
 
     /**
