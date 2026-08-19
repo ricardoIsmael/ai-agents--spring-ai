@@ -2,7 +2,10 @@
 # y pasa a ser el Postgres que hospeda Supabase.
 #
 # Se enciende a mano, no por defecto:
-#   ./mvnw spring-boot:run -Dspring-boot.run.profiles=supabase
+#   .\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=supabase"
+#
+# Las comillas son obligatorias en PowerShell: sin ellas parte el argumento en dos por el
+# guion de "spring-boot" y Maven se queja de una fase del ciclo de vida que no existe.
 #
 # Sin el perfil, todo sigue igual que siempre: el contenedor local del puerto 5433. Asi
 # nadie mas del equipo se ve arrastrado por este cambio.

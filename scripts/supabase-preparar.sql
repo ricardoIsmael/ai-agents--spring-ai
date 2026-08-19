@@ -31,6 +31,11 @@ create extension if not exists pgcrypto    with schema extensions;
 -- todavia no existen, las que creen las migraciones futuras. Sin ella habria que volver a
 -- correr esto cada vez que alguien anada una tabla, y se olvidaria.
 
+-- Ojo con la primera linea: quitarle el permiso a anon y a authenticated NO basta. En
+-- Postgres, el esquema public se lo regala de nacimiento al rol PUBLIC, que quiere decir
+-- "todo el mundo", y de ahi lo heredan los dos. Hay que quitarselo a PUBLIC. Los roles que
+-- si lo necesitan (postgres, service_role) lo tienen concedido a su nombre y no se enteran.
+revoke usage on schema public from public;
 revoke usage on schema public from anon, authenticated;
 revoke all on all tables    in schema public from anon, authenticated;
 revoke all on all sequences in schema public from anon, authenticated;
@@ -51,3 +56,12 @@ alter default privileges for role postgres in schema public revoke all on functi
 select count(*) as objetos_en_public
 from information_schema.tables
 where table_schema = 'public';
+
+
+-- 4. Comprobar que la puerta quedo cerrada ------------------------------------------------
+--
+-- Las dos columnas tienen que decir "false". Si alguna dice "true", la API publica de
+-- Supabase sigue pudiendo entrar al esquema donde van a vivir los datos de los candidatos.
+
+select has_schema_privilege('anon',          'public', 'USAGE') as anon_entra,
+       has_schema_privilege('authenticated', 'public', 'USAGE') as authenticated_entra;

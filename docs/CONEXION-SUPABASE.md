@@ -45,8 +45,13 @@ propósito. Aquí van a vivir nombres, correos, teléfonos y currículums de can
 El backend no necesita esa API para nada, así que se cierra antes de que exista la primera
 tabla.
 
-La última consulta del script tiene que devolver **0**. Si devuelve otra cosa, hay algo
-creado en `public` y el paso 4 va a fallar; el propio script explica cómo vaciarlo.
+El script termina con dos comprobaciones. La primera tiene que devolver **0**: si devuelve
+otra cosa, hay algo creado en `public` y el paso 4 va a fallar, y el propio script explica
+cómo vaciarlo. La segunda tiene que devolver **false** en las dos columnas.
+
+Falta un cierre más que no se puede hacer por SQL: **Project Settings → API → Exposed
+schemas**, y quitar `public` de la lista. Eso apaga la API pública de raíz, sin depender de
+los permisos.
 
 ### 2. Copia los datos de conexión
 
@@ -74,8 +79,13 @@ Ese archivo está en `.gitignore` y nunca se sube.
 ### 4. Arranca con el perfil
 
 ```bash
-./mvnw spring-boot:run -Dspring-boot.run.profiles=supabase
+.\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=supabase"
 ```
+
+⚠️ **Las comillas no sobran.** Sin ellas, PowerShell parte el argumento en dos por el guion
+de `spring-boot`: le pasa a Maven `-Dspring-boot` por un lado y `.run.profiles=supabase` por
+otro, y Maven responde `Unknown lifecycle phase ".run.profiles=supabase"`. En Linux o en Git
+Bash el comando es `./mvnw`, y las comillas ahí no estorban.
 
 La primera vez tarda más de lo normal: Flyway crea las 34 tablas y siembra los datos base, y
 todo eso viaja por internet en lugar de quedarse en tu máquina.
@@ -98,7 +108,7 @@ Si sale 0, la aplicación no llegó a conectarse; mira el error en la consola.
 Arranca sin el perfil:
 
 ```bash
-./mvnw spring-boot:run
+.\mvnw.cmd spring-boot:run
 ```
 
 Vuelves al Docker local. No se borra nada de Supabase, y los dos pueden convivir.
