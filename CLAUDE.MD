@@ -68,13 +68,13 @@ Perfil Integral → prueba del puesto → simulacion → validacion → decision
 
 | | |
 |---|---|
-| Base de datos | **Flyway es el dueno del esquema**: V1-V18 en `src/main/resources/db/migration`. `ddl-auto: validate`, que gobierna tambien la tabla `agent_run` del modulo de agentes |
+| Base de datos | **Flyway es el dueno del esquema**: V1-V19 en `src/main/resources/db/migration`, **85 tablas de este modulo** (88 en la base contando `flyway_schema_history` y las dos del motor de agentes, `agent_run` y `vector_store`). `ddl-auto: validate` |
 | Codigo | Veintiun paquetes de dominio bajo `ai_engine` (ver «Como esta organizado el codigo») |
-| Tests | **52 en verde.** Unitarios de la maquina y del anonimizador, migraciones contra Postgres real (Testcontainers) y cinco flujos de punta a punta: hito 1, evaluacion, prueba, simulacion/validacion y calificacion con IA |
+| Tests | **103** (ver «Correr los tests»): unitarios de la maquina y del anonimizador, migraciones contra Postgres real (Testcontainers) y cinco flujos de punta a punta: hito 1, evaluacion, prueba, simulacion/validacion y calificacion con IA |
 | IA que califica | **Tres de los nueve agentes del catalogo estan implementados**: evidencia del curriculum, evaluador y potencial/riesgo. Corren por cola de RabbitMQ contra DeepSeek. Ver [Calificacion con IA](docs/CALIFICACION-CON-IA.md) |
 | Correo | Se registra en `correo_enviado` pero NO se envia: falta el dominio de Renaser (`EnviadorCorreoLog`) |
 | Identidad equipo | `dev-login` de desarrollo; el contrato de RENASER OS no existe aun (`ProveedorIdentidadEquipo`) |
-| Frontend | **En marcha desde el 18/08/2026**, en el repositorio de RENASER OS (`/home/n4nd0/Documentos/RenaserOs`, rama `feat/talento`). Es **React con Vite**, no Next.js como decian los documentos. Ya hay cliente de la API (`src/lib/apiTalento.js`), siete hooks y las pantallas de solicitudes, vacantes, bandeja, ficha, embudo y administracion. En desarrollo entra por el proxy de Vite hacia `localhost:8080` |
+| Frontend | **Tres, y hacen cosas distintas.** Ver «Las tres pantallas» mas abajo |
 | Mockups | Los mantiene otra persona y **describen la version anterior** |
 
 **Lo que falta de codigo:** los agentes que califican la prueba del puesto (`PRUEBA_PUESTO`) y
@@ -99,6 +99,47 @@ Conocido y aceptado: `FiltroAlcance.responsableOFiltroNulo()` trata el alcance `
 `TODO` —devuelve nulo y no filtra—. Hoy no es alcanzable porque ninguna semilla da un permiso de
 panel con ese alcance, pero si alguien configura un rol asi, veria de mas.
 
+### La criba de curriculums (18/08/2026)
+Contesta «llegaron cien curriculums, a quien invito primero». Antes la IA solo arrancaba
+cuando el candidato entregaba su evaluacion, asi que con una carpeta recien llegada no habia
+forma de pedirla. Cuatro endpoints en `PostulacionesPanelController`:
+
+| Para que | Llamada |
+|---|---|
+| La tanda entera, ordenada de mas apto a menos | `GET /api/v1/panel/vacantes/{id}/ranking` |
+| Primera pasada sobre todos los que no tienen nota | `POST /api/v1/panel/vacantes/{id}/criba-rapida` |
+| Segunda pasada, solo sobre la parte alta | `POST /api/v1/panel/vacantes/{id}/criba-fina` |
+| Releer un curriculum suelto | `POST /api/v1/panel/postulaciones/{id}/criba-cv` |
+
+Dos cosas que no son obvias y cuestan dinero si se ignoran:
+
+- **La primera pasada usa el modelo rapido y no razona.** Sirve para ordenar, no para decidir.
+  Su nota viaja marcada como `RAPIDA` y es provisional.
+- **La segunda pasada se niega a correr si todavia no hay ninguna nota**, porque «los de
+  arriba» no existirian y elegiria por orden alfabetico. Cuanta parte entra lo dice el
+  parametro `porcentaje_criba_fina` (50 por defecto).
+
+Un agente nuevo, `AgenteDatosCv`, saca del curriculum quien es la persona (nombre, ultimo
+puesto, anos de experiencia) y lo guarda en `dato_cv` (migracion `V19`). **No puntua**: por eso
+puede leer datos que los agentes que califican no ven.
+
+**Un PDF escaneado no se puede leer.** Sin texto no hay nada que mandar al modelo, y el sistema
+lo deja fallido en vez de inventar una nota. Los CVs de las semillas son de ese tipo, asi que
+en una base recien sembrada la criba los marca como fallidos: es correcto, no es un fallo.
+
+Ver [La criba de curriculums](docs/CRIBA-DE-CURRICULUMS.md).
+
+### Las tres pantallas
+Ninguna reemplaza a otra, y solo una vive en este repositorio.
+
+| | Donde | Que hace | Como se levanta |
+|---|---|---|---|
+| `frontend/` | **En este repo** | Ranking y ficha del candidato, con los ocho criterios y los hallazgos. **No sube curriculums**: entran por `scripts/cargar-convocatoria.py` | `cd frontend && npm install && npm run dev` (5173) |
+| `RenaserTalentoFrontend` | `~/Documentos/RenaserTalentoFrontend`, fuera de git | Una pagina sola: elegir puesto, **arrastrar curriculums**, lanzar las dos pasadas y ver la tabla. Para ensenar el flujo sin tocar la terminal | `node servidor.js` (3000), sin `npm install` |
+| RENASER OS | `/home/n4nd0/Documentos/RenaserOs`, rama `feat/talento` | El panel de verdad: solicitudes, vacantes, bandeja, ficha, embudo y administracion. React con Vite, **no Next.js** como decian los documentos | Proxy de Vite hacia `localhost:8080` |
+
+Las tres consultan el mismo backend, asi que ensenan el mismo orden.
+
 ### Reglas que no se negocian al tocar el codigo
 - Toda transicion pasa por `MaquinaEstados.transicionar`. **Nunca** tocar
   `postulacion.estado_codigo` a mano.
@@ -113,6 +154,14 @@ panel con ese alcance, pero si alguien configura un rol asi, veria de mas.
 ### Correr los tests
 Hace falta Docker levantado (Testcontainers), `renaser-postgres` en el puerto 5433 y RabbitMQ.
 `./mvnw test`.
+
+Desde el merge de `origin/ricardo` del 18/08/2026 son **103 tests** y compilan bien: Ricardo
+arreglo la firma del doble del modelo y sumo unitarios de la cola, del registro de trabajos,
+del panel y **7 reglas de arquitectura con ArchUnit** (la frontera del motor, las capas y que
+el estado solo lo mueva la maquina — las mismas reglas que este archivo tiene en prosa).
+
+**El test que gasta dinero ya no corre solo**: `CalificacionIaRealIT` esta detras de la
+variable `RENASER_IA_REAL`. `./mvnw test` a secas ya es seguro y no llama a DeepSeek.
 
 ⚠️ **Cada ejecucion cuesta dinero.** El `pom.xml` mete `**/*IT.java` en los `includes` de
 surefire, asi que `CalificacionIaRealIT` corre siempre y hace **cuatro llamadas reales a

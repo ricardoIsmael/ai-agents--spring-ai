@@ -147,6 +147,36 @@ Para volver a mirar la tanda sin cargar nada:
 python scripts/cargar-convocatoria.py --uid TU_UID --solo-ranking
 ```
 
+
+---
+
+## La otra pantalla: subir currículums a mano
+
+Todo lo de arriba pasa por la terminal: la carpeta, el script de Python, el `--uid`. Eso sirve
+para cargar una convocatoria entera, pero no para enseñarle el sistema a alguien de Renaser ni
+para que el propio cliente pruebe con dos currículums sueltos.
+
+Para eso hay una segunda pantalla, **fuera de este repositorio**, en
+`~/Documentos/RenaserTalentoFrontend`. Es una sola página sin dependencias:
+
+```bash
+node servidor.js
+```
+
+Queda en `http://localhost:3000` y hace el camino completo desde el navegador: elegir el
+puesto, **arrastrar los currículums**, lanzar las dos pasadas y ver la tabla. Los sube por las
+mismas llamadas del portal que usa el script, así que no hay un segundo camino de entrada que
+mantener.
+
+| | `frontend/` | `RenaserTalentoFrontend` |
+|---|---|---|
+| Para qué sirve | Trabajar sobre una tanda ya cargada | Enseñar el flujo y probar con pocos |
+| Subir currículums | No, con el script de Python | Sí, desde el navegador |
+| Ficha del candidato | Sí, con los ocho criterios | No, solo la tabla |
+| Qué hace falta instalar | Node y `npm install` | Solo Node |
+
+Las dos consultan el mismo ranking del backend, así que enseñan el mismo orden.
+
 ---
 
 ## Decisiones

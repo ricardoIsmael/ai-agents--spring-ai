@@ -23,10 +23,15 @@ Sirve para tres cosas:
 - **Entender el sistema.** Un modelo de datos bien contado explica el negocio mejor que
   cualquier otro documento.
 
-**La base ya está construida** (18/08/2026). Las migraciones `V1` a `V18` viven en
-`src/main/resources/db/migration` y Flyway es el dueño del esquema. Cambiar algo de aquí ya
-cuesta una migración nueva, y **una migración aplicada no se edita nunca**: se escribe otra
+**La base ya está construida** (18/08/2026). Las migraciones `V1` a `V19` viven en
+`src/main/resources/db/migration` —**85 tablas de este módulo**, 88 en la base contando la de
+Flyway y las dos del motor de agentes— y Flyway es el dueño del esquema. Cambiar algo de aquí
+ya cuesta una migración nueva, y **una migración aplicada no se edita nunca**: se escribe otra
 encima.
+
+La última, `V19__datos_del_cv_y_dos_pasadas.sql`, trae `dato_cv`: quién es la persona según su
+currículum, sacado por un agente que no puntúa. Ver
+[La criba de currículums](CRIBA-DE-CURRICULUMS.md).
 
 ---
 
