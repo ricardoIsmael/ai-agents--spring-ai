@@ -10,21 +10,30 @@ nadie salvo una persona leyendo el código.
 ## Cómo se lanza todo
 
 ```bash
-DOCKER_HOST='npipe:////./pipe/docker_engine' ./mvnw test -Dtest='!CalificacionIaRealIT'
+DOCKER_HOST='npipe:////./pipe/docker_engine' ./mvnw test
 ```
 
-Las dos cosas raras de esa línea tienen motivo:
+**`DOCKER_HOST` hace falta en esta máquina.** El contexto activo de Docker es
+`desktop-linux`, cuyo canal no existe; el que funciona es el `default`. Sin esto, todas las
+pruebas de integración fallan con «Could not find a valid Docker environment», y **eso no es
+un fallo del código**.
 
-- **`DOCKER_HOST`** hace falta en esta máquina. El contexto activo de Docker es
-  `desktop-linux`, cuyo canal no existe; el que funciona es el `default`. Sin esto, todas las
-  pruebas de integración fallan con «Could not find a valid Docker environment», y **eso no
-  es un fallo del código**.
-- **`CalificacionIaRealIT` se excluye a mano.** Llama al proveedor de verdad y gasta dinero.
-  No tiene ninguna bandera que lo apague, y el `pom.xml` mete los `*IT.java` en la misma
-  tanda que el resto, así que corre solo si no se dice lo contrario.
+### La que no corre sola
 
-> ⚠️ **Conviene ponerle una bandera** a esa prueba (`@EnabledIfEnvironmentVariable`) para que
-> no se dispare sin querer en la máquina de alguien que no sepa esto.
+`CalificacionIaRealIT` llama al proveedor de verdad y gasta saldo. Está apagada salvo que se
+pida:
+
+```bash
+RENASER_IA_REAL=si ./mvnw test -Dtest=CalificacionIaRealIT
+```
+
+Se apaga por defecto y no al revés a propósito: **olvidarse de encenderla no cuesta nada;
+olvidarse de apagarla, sí.** Sin la bandera se salta en milisegundos, sin levantar
+contenedores ni llamar a nadie.
+
+Lo que comprueba —que la clave llegue, que el modelo conteste y que lo que conteste encaje en
+el contrato de cada agente— se mira **antes de publicar**, no en cada compilación. Todo lo
+demás de la calificación se prueba con un doble del modelo y no gasta nada.
 
 ---
 
@@ -35,6 +44,7 @@ Las dos cosas raras de esa línea tienen motivo:
 | Unitarias, con dobles | 100 | nada |
 | Arquitectura | 7 | nada |
 | Integración, de punta a punta | 21 | Docker |
+| Contra el proveedor de verdad | 5 | Docker, saldo y la bandera |
 
 Las de integración levantan un PostgreSQL y un RabbitMQ de verdad con Testcontainers, y
 recorren el flujo entero. **El modelo siempre se simula**: ninguna prueba de la tanda normal
