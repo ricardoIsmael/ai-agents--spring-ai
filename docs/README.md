@@ -38,6 +38,7 @@ requisitos nuevos el 14 de agosto y cambian bastante.
 | [Calificación con IA](CALIFICACION-CON-IA.md) | Cómo la IA lee el currículum, califica lo abierto y arma el Perfil de Talento. Y qué pasa si falla |
 | [Criba de currículums](CRIBA-DE-CURRICULUMS.md) | Cargar una convocatoria con una carpeta de currículums, pedir que la IA los lea y ver quién es el más apto |
 | [Fallos corregidos de la criba](FALLOS-CORREGIDOS-CRIBA.md) | Los cinco fallos que salieron al pasar 190 currículums reales. Cuatro no daban error |
+- [Los siete fallos de la auditoría](FALLOS-CORREGIDOS-AUDITORIA.md) — lo que encontró la revisión del 18/08: cuatro que tocaban dinero o decisiones de contratación, y ninguno daba error
 | [Comprobaciones automáticas](COMPROBACIONES-AUTOMATICAS.md) | Qué se comprueba solo: 128 pruebas y 7 reglas de arquitectura. Y qué falta: la seguridad, con Semgrep |
 
 ### Diagramas
