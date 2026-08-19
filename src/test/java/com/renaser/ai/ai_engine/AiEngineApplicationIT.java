@@ -14,7 +14,7 @@ import org.testcontainers.rabbitmq.RabbitMQContainer;
 // los suyos con Testcontainers y pasa en cualquier máquina con Docker.
 @SpringBootTest
 @Testcontainers
-class AiEngineApplicationTests {
+class AiEngineApplicationIT {
 
 	@Container
 	@ServiceConnection

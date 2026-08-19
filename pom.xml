@@ -36,6 +36,15 @@
 		<!-- La misma que ya traia spring-ai-pdf-document-reader: no baja nada nuevo -->
 		<pdfbox.version>3.0.7</pdfbox.version>
 		<archunit.version>1.4.1</archunit.version>
+		<!-- 0.8.13+ es la primera que entiende los .class de Java 25 -->
+		<jacoco.version>0.8.13</jacoco.version>
+		<!-- SonarCloud mira la cobertura solo del código NUEVO de cada PR (Clean as You
+		     Code). La clave del proyecto la asigna SonarCloud al importar el repositorio:
+		     si no coincide con estas dos propiedades, se corrigen aquí. -->
+		<sonar.organization>ricardoismael</sonar.organization>
+		<sonar.projectKey>ricardoIsmael_ai-agents--spring-ai</sonar.projectKey>
+		<sonar.host.url>https://sonarcloud.io</sonar.host.url>
+		<sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -221,12 +230,48 @@
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
 				<configuration>
-					<!-- Los tests de integración terminan en IT y también corren aquí -->
+					<!-- Solo unitarios: rápidos, sin Docker y sin gastar en el proveedor.
+					     Los de integración (*IT) los corre failsafe en `mvn verify`. -->
 					<includes>
 						<include>**/*Test.java</include>
 						<include>**/*Tests.java</include>
-						<include>**/*IT.java</include>
 					</includes>
+				</configuration>
+			</plugin>
+			<plugin>
+				<!-- Mide qué líneas ejecutan los tests y deja el XML que SonarCloud lee.
+				     No impone umbral: la puerta la pone SonarCloud, y solo sobre lo nuevo. -->
+				<groupId>org.jacoco</groupId>
+				<artifactId>jacoco-maven-plugin</artifactId>
+				<version>${jacoco.version}</version>
+				<executions>
+					<execution>
+						<goals>
+							<goal>prepare-agent</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>reporte</id>
+						<phase>verify</phase>
+						<goals>
+							<goal>report</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-failsafe-plugin</artifactId>
+				<executions>
+					<execution>
+						<goals>
+							<goal>integration-test</goal>
+							<goal>verify</goal>
+						</goals>
+					</execution>
+				</executions>
+				<configuration>
+					<!-- Por convención failsafe ya toma **/*IT.java -->
 					<environmentVariables>
 						<!-- Docker Desktop: dentro de su VM el socket es el estándar. En un
 						     Docker normal esto es la misma ruta, así que no estorba. -->
@@ -282,5 +327,57 @@
 			</plugin>
 		</plugins>
 	</build>
+
+	<profiles>
+		<!-- Mutation testing: mete fallos a propósito en el código y comprueba que algún
+		     test se ponga rojo. Mide si los tests protegen, no cuánto código pisan — la
+		     cobertura alta con tests huecos pasa JaCoCo pero no pasa esto.
+
+		     ⚠️ Hoy NO corre: pitest 1.19.1 (la última publicada, 19/08/2026) no lee
+		     bytecode de Java 25 («Unsupported class file major version 69»). La
+		     configuración se queda lista a propósito: cuando salga la versión que lo
+		     soporte, se sube el número de abajo y se prueba con
+		       ./mvnw -B -Ppit test-compile pitest:mutationCoverage
+		     El workflow nocturno lo intenta solo si se le pide (interruptor manual).
+
+		     No corre en cada PR: es lento a propósito. Solo apunta a los paquetes de
+		     reglas cerradas, donde un mutante vivo es un hueco real. Meter aquí
+		     controladores o dtos solo haría ruido. -->
+		<profile>
+			<id>pit</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.pitest</groupId>
+						<artifactId>pitest-maven</artifactId>
+						<version>1.19.1</version>
+						<dependencies>
+							<dependency>
+								<groupId>org.pitest</groupId>
+								<artifactId>pitest-junit5-plugin</artifactId>
+								<version>1.2.2</version>
+							</dependency>
+						</dependencies>
+						<configuration>
+							<targetClasses>
+								<param>com.renaser.ai.ai_engine.postulacion.*</param>
+								<param>com.renaser.ai.ai_engine.perfilintegral.*</param>
+								<param>com.renaser.ai.ai_engine.pesos.*</param>
+								<param>com.renaser.ai.ai_engine.seguridad.*</param>
+							</targetClasses>
+							<!-- Solo los unitarios: los *IT levantan contenedores y PIT corre
+							     la suite una vez POR MUTANTE — con ellos no terminaría nunca -->
+							<targetTests>
+								<param>com.renaser.ai.ai_engine.*Test</param>
+							</targetTests>
+							<!-- Guarda lo ya analizado: la segunda corrida solo mira lo que cambió -->
+							<withHistory>true</withHistory>
+							<timestampedReports>false</timestampedReports>
+						</configuration>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
 
 </project>

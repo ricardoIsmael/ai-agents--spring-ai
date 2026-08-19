@@ -72,6 +72,15 @@ public class ConfiguracionSwagger {
             .map(c -> c.getPackage().getName())
             .collect(Collectors.toUnmodifiableSet());
 
+    /**
+     * Los paquetes cuyos endpoints llevan candado. Lo usa {@code ArquitecturaTest} para
+     * volver comprobable el aviso de arriba: un controlador nuevo que no esté aquí ya no
+     * sale en Swagger sin candado sin que nadie se entere — falla la compilación del PR.
+     */
+    public static Set<String> paquetesConCandado() {
+        return PAQUETES;
+    }
+
     // Sin esto no hay dónde pegar el token y los endpoints no se pueden probar desde Swagger
     @Bean
     public OpenApiCustomizer esquemaBearerSeleccion() {
