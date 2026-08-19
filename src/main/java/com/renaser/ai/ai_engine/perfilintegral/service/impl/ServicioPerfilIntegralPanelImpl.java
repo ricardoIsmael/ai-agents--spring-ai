@@ -3,6 +3,8 @@ package com.renaser.ai.ai_engine.perfilintegral.service.impl;
 import com.renaser.ai.ai_engine.ai.exception.ResourceNotFoundException;
 import com.renaser.ai.ai_engine.ai.service.ColaCalificacionIa;
 import com.renaser.ai.ai_engine.archivo.entity.Archivo;
+import com.renaser.ai.ai_engine.archivo.entity.Archivo;
+import com.renaser.ai.ai_engine.archivo.repository.ArchivoRepository;
 import com.renaser.ai.ai_engine.archivo.service.AlmacenArchivos;
 import com.renaser.ai.ai_engine.auditoria.service.ServicioAuditoria;
 import com.renaser.ai.ai_engine.perfilintegral.dto.DtosPerfilIntegral.AlertaResponse;
@@ -93,6 +95,7 @@ public class ServicioPerfilIntegralPanelImpl implements ServicioPerfilIntegralPa
     private final UsuarioRepository usuarios;
     private final PersonaRepository personas;
     private final PuestoRepository puestos;
+    private final ArchivoRepository archivos;
     private final AlmacenArchivos almacen;
     private final ServicioAuditoria auditoria;
     private final ColaCalificacionIa cola;
@@ -117,9 +120,10 @@ public class ServicioPerfilIntegralPanelImpl implements ServicioPerfilIntegralPa
                 .stream()
                 .collect(Collectors.toMap(NotaCriterio::getCriterioId, Function.identity(),
                         (a, b) -> a));
+        Map<Long, BigDecimal> pesos = pesosDe(postulacion);
         List<NotaCriterioResponse> notas = criterios
                 .findByEtapaCodigoAndVersionPlantillaPruebaIdIsNullOrderByOrden(ETAPA).stream()
-                .map(c -> pintarNota(c, notaPorCriterio.get(c.getId())))
+                .map(c -> pintarNota(c, notaPorCriterio.get(c.getId()), pesos))
                 .toList();
 
         List<HallazgoResponse> lista = perfil == null ? List.of()
@@ -331,7 +335,7 @@ public class ServicioPerfilIntegralPanelImpl implements ServicioPerfilIntegralPa
                     .collect(Collectors.toMap(NotaCriterio::getCriterioId, Function.identity(),
                             (a, b) -> a));
             List<NotaCriterioResponse> notas = delCurriculum.stream()
-                    .map(c -> pintarNota(c, notaPorCriterio.get(c.getId())))
+                    .map(c -> pintarNota(c, notaPorCriterio.get(c.getId()), pesos))
                     .toList();
 
             Usuario usuario = usuarios.findById(p.getUsuarioId()).orElse(null);
@@ -348,6 +352,7 @@ public class ServicioPerfilIntegralPanelImpl implements ServicioPerfilIntegralPa
                     nombreEstado.getOrDefault(p.getEstadoCodigo(), p.getEstadoCodigo()),
                     comoVa,
                     pasada,
+                    nombreDelArchivo(p.getId()),
                     pintarDatos(fichas.get(p.getId())),
                     p.getGrupoPrioridad(),
                     notasEtapa.findByPostulacionIdAndEtapaCodigo(p.getId(), ETAPA)
@@ -379,7 +384,7 @@ public class ServicioPerfilIntegralPanelImpl implements ServicioPerfilIntegralPa
             FilaRanking f = filas.get(i);
             numeradas.add(new FilaRanking(i + 1, f.postulacionId(), f.uuid(), f.candidato(),
                     f.correo(), f.estado(), f.estadoNombre(), f.estadoCalificacion(),
-                    f.pasada(), f.datos(),
+                    f.pasada(), f.archivoNombre(), f.datos(),
                     f.grupoPrioridad(), f.notaEtapa(), f.notaCurriculum(), f.adecuacion(),
                     f.potencial(), f.altoRendimiento(), f.confianzaEvidencia(), f.resumen(),
                     f.riesgosCriticos(), f.fortalezas(), f.alertas(), f.actualizadoEn(),
@@ -390,6 +395,21 @@ public class ServicioPerfilIntegralPanelImpl implements ServicioPerfilIntegralPa
                 puesto == null ? null : puesto.getNombre(),
                 puesto == null ? null : puesto.getNivelPuestoCodigo(),
                 numeradas.size(), conFina, calificados, enCurso, fallidos, numeradas);
+    }
+
+    /**
+     * Cómo se llamaba el archivo que subió.
+     *
+     * <p>No se sirve el currículum desde aquí: el nombre basta para encontrarlo donde
+     * viva —la carpeta compartida del equipo—, y así el archivo no tiene que salir por un
+     * segundo sitio con su propio control de acceso.
+     */
+    private String nombreDelArchivo(Long postulacionId) {
+        return cvs.findByPostulacionId(postulacionId)
+                .map(Cv::getArchivoOriginalId)
+                .flatMap(archivos::findById)
+                .map(Archivo::getNombreOriginal)
+                .orElse(null);
     }
 
     /** La ficha del candidato, o nada si el agente que la saca todavía no ha corrido. */
@@ -474,13 +494,32 @@ public class ServicioPerfilIntegralPanelImpl implements ServicioPerfilIntegralPa
 
     // ============ Apoyo ============
 
-    private NotaCriterioResponse pintarNota(Criterio criterio, NotaCriterio nota) {
+    private NotaCriterioResponse pintarNota(Criterio criterio, NotaCriterio nota,
+                                           Map<Long, BigDecimal> pesos) {
         return new NotaCriterioResponse(
                 criterio.getNombre(),
                 nota == null ? null : nota.getPuntaje(),
                 criterio.getPuntos(),
+                pesos.get(criterio.getId()),
                 nota == null ? null : nota.getExplicacion(),
                 nota == null ? null : nota.getOrigen());
+    }
+
+    /**
+     * Cuanto pesa cada criterio para esta postulacion.
+     *
+     * <p>Los pesos son los de la version de la vacante y del nivel de su puesto, no los de
+     * la ultima version publicada: una nota de hace seis meses tiene que seguir
+     * explicandose con los pesos con que se calculo.
+     */
+    private Map<Long, BigDecimal> pesosDe(Postulacion postulacion) {
+        return vacantes.findById(postulacion.getVacanteId())
+                .flatMap(v -> puestos.findById(v.getPuestoId())
+                        .map(pu -> pesosCriterio.findByVersionPesosIdAndNivelPuestoCodigo(
+                                v.getVersionPesosId(), pu.getNivelPuestoCodigo())))
+                .map(lista -> lista.stream().collect(Collectors.toMap(
+                        PesoCriterio::getCriterioId, PesoCriterio::getPeso, (a, b) -> a)))
+                .orElseGet(Map::of);
     }
 
     /**

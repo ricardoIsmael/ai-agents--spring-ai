@@ -14,7 +14,12 @@
     "No es un detalle de catálogo: es la diferencia entre dos rankings distintos.",
     "",
     "'familiaCodigo' sale del catálogo sembrado: DIRECCION_NEGOCIO, OPERACIONES,",
-    "CRECIMIENTO, TECNOLOGIA, CREATIVO, TALENTO, SEGURIDAD_CRITICA."
+    "CRECIMIENTO, TECNOLOGIA, CREATIVO, TALENTO, SEGURIDAD_CRITICA.",
+    "",
+    "'carpetaDrive' es donde viven los currículums de esa convocatoria. La pantalla no los",
+    "sirve: solo enseña el nombre del archivo y un enlace a la carpeta, y quien tenga acceso",
+    "a esa carpeta lo abre. Así el control de quién ve un CV sigue siendo el de Drive, que",
+    "es el que ya existe, y no hay una segunda copia por ahí con sus propios permisos."
   ],
   "talento": {
     "area": "Talento",
@@ -55,7 +60,8 @@
       "ubicacion": "Arequipa",
       "tipoCierre": "PERMANENTE",
       "plazas": 1
-    }
+    },
+    "carpetaDrive": "https://drive.google.com/drive/folders/1rmctP8znXcaPcXCMpOsHnRtMCrblzSUw"
   },
   "asistente-admin": {
     "area": "Administración",
@@ -98,7 +104,8 @@
       "tipoCierre": "PERMANENTE",
       "plazas": 1,
       "cierraEn": "2026-08-15T23:59:59Z"
-    }
+    },
+    "carpetaDrive": "https://drive.google.com/drive/folders/1ZzerUNS5_ZKQdhW_jjlRpWEEVxQpZLoK"
   },
   "administrador": {
     "area": "Administración",
@@ -141,6 +148,7 @@
       "tipoCierre": "PERMANENTE",
       "plazas": 1,
       "cierraEn": "2026-08-15T23:59:59Z"
-    }
+    },
+    "carpetaDrive": "https://drive.google.com/drive/folders/13ZS5dZ1PvVSgH8ebo1deQSlb3My145Tx"
   }
 }

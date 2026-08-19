@@ -44,8 +44,12 @@ public final class DtosPerfilIntegral {
 
     // La explicación viaja siempre: una nota sin ella no se guarda, así que tampoco se
     // enseña sola. Quien revisa tiene que poder ver en qué se basó el modelo.
+    // El peso viaja con la nota, y no es decoracion: es lo que explica de donde sale el
+    // numero final. Un 90 en un criterio que pesa 25 y un 90 en uno que pesa 5 se leen
+    // igual en pantalla y no valen lo mismo.
     public record NotaCriterioResponse(String criterio, BigDecimal puntaje,
-                                       BigDecimal maximo, String explicacion, String origen) {}
+                                       BigDecimal maximo, BigDecimal peso,
+                                       String explicacion, String origen) {}
 
     // Una alerta no descarta a nadie: es una pregunta para la conversación final.
     public record AlertaResponse(String tipo, String descripcion, Instant creadoEn) {}
@@ -101,6 +105,9 @@ public final class DtosPerfilIntegral {
             String estadoCalificacion,
             // FINA, RAPIDA o vacío. Una nota de la rápida es provisional.
             String pasada,
+            // Cómo se llama su archivo. Es lo que permite dar con el currículum
+            // en la carpeta donde vive, sin tener que servirlo desde aquí.
+            String archivoNombre,
             DatosCandidato datos,
             String grupoPrioridad,
             BigDecimal notaEtapa,

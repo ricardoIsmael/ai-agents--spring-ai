@@ -1,14 +1,28 @@
 // La única puerta al backend. Todo lo demás del frontend pide por aquí.
 //
+// Tiene dos modos:
+//
+//   - **En vivo**, el normal: habla con Spring y se puede pedir que la IA califique.
+//   - **Demo**, con VITE_MODO=demo: no hay backend. Lee una foto de los datos que se
+//     congeló con scripts/exportar-para-demo.py y queda un sitio estático que se puede
+//     publicar en cualquier sitio.
+//
+// El modo demo existe para enseñar el resultado a quien no va a levantar nada. Es de solo
+// mirar: los botones que piden calificar se apagan, porque no hay a quién pedírselo.
+//
 // El token vive en sessionStorage y no en localStorage a propósito: es una sesión del
 // equipo mirando currículums de gente real, y no tiene por qué sobrevivir a cerrar la
 // pestaña.
 
+import demo from './datos-demo.json'
+
 const BASE = '/api/v1'
 const LLAVE = 'renaser.token'
 
+export const ES_DEMO = import.meta.env.VITE_MODO === 'demo'
+
 export function token() {
-  return sessionStorage.getItem(LLAVE)
+  return ES_DEMO ? 'demo' : sessionStorage.getItem(LLAVE)
 }
 
 export function cerrarSesion() {
@@ -17,7 +31,7 @@ export function cerrarSesion() {
 
 async function pide(metodo, ruta, cuerpo) {
   const cabeceras = {}
-  const t = token()
+  const t = sessionStorage.getItem(LLAVE)
   if (t) cabeceras.Authorization = `Bearer ${t}`
   if (cuerpo !== undefined) cabeceras['Content-Type'] = 'application/json'
 
@@ -44,6 +58,20 @@ async function pide(metodo, ruta, cuerpo) {
   return texto ? JSON.parse(texto) : null
 }
 
+/** Un dato de la foto. Se devuelve copiado para que nadie lo modifique sin querer. */
+function deLaFoto(valor, queEs) {
+  if (valor === undefined) {
+    throw new Error(`Esto no está en la foto de datos: ${queEs}. `
+      + 'Vuelve a exportarla con scripts/exportar-para-demo.py.')
+  }
+  return structuredClone(valor)
+}
+
+const noEnDemo = () => {
+  throw new Error('Esta pantalla es una foto de los resultados: no hay backend al que '
+    + 'pedirle que la IA vuelva a calificar.')
+}
+
 /** Entra como equipo. Es el atajo de desarrollo: RENASER OS todavía no emite el token. */
 export async function entrar(uid) {
   const sesion = await pide('POST', '/panel/auth/dev-login', { usuarioRenaserOsId: uid })
@@ -51,15 +79,29 @@ export async function entrar(uid) {
   return sesion
 }
 
-export const vacantes = () => pide('GET', '/panel/vacantes')
-export const ranking = (vacanteId) => pide('GET', `/panel/vacantes/${vacanteId}/ranking`)
-export const embudo = (vacanteId) => pide('GET', `/panel/vacantes/${vacanteId}/embudo`)
-export const ficha = (postulacionId) => pide('GET', `/panel/postulaciones/${postulacionId}`)
+export const vacantes = () =>
+  ES_DEMO ? Promise.resolve(deLaFoto(demo.vacantes, 'las vacantes'))
+    : pide('GET', '/panel/vacantes')
+
+export const ranking = (vacanteId) =>
+  ES_DEMO ? Promise.resolve(deLaFoto(demo.rankings[vacanteId], `el ranking de ${vacanteId}`))
+    : pide('GET', `/panel/vacantes/${vacanteId}/ranking`)
+
+export const embudo = (vacanteId) =>
+  ES_DEMO ? Promise.resolve(deLaFoto(demo.embudos[vacanteId], `el embudo de ${vacanteId}`))
+    : pide('GET', `/panel/vacantes/${vacanteId}/embudo`)
+
 export const perfil = (postulacionId) =>
-  pide('GET', `/panel/postulaciones/${postulacionId}/perfil-integral`)
+  ES_DEMO ? Promise.resolve(deLaFoto(demo.perfiles[postulacionId], `el perfil de ${postulacionId}`))
+    : pide('GET', `/panel/postulaciones/${postulacionId}/perfil-integral`)
+
+export const ficha = (postulacionId) => pide('GET', `/panel/postulaciones/${postulacionId}`)
+
 export const cribar = (postulacionId) =>
-  pide('POST', `/panel/postulaciones/${postulacionId}/criba-cv`)
+  ES_DEMO ? noEnDemo() : pide('POST', `/panel/postulaciones/${postulacionId}/criba-cv`)
+
 export const cribaRapida = (vacanteId) =>
-  pide('POST', `/panel/vacantes/${vacanteId}/criba-rapida`)
+  ES_DEMO ? noEnDemo() : pide('POST', `/panel/vacantes/${vacanteId}/criba-rapida`)
+
 export const cribaFina = (vacanteId) =>
-  pide('POST', `/panel/vacantes/${vacanteId}/criba-fina`)
+  ES_DEMO ? noEnDemo() : pide('POST', `/panel/vacantes/${vacanteId}/criba-fina`)

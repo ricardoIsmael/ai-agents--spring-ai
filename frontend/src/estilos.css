@@ -271,3 +271,78 @@ tbody tr.elegida { background: var(--papel); box-shadow: inset 3px 0 0 var(--tin
   letter-spacing: 0.04em;
   color: var(--apagado);
 }
+
+/* El archivo del currículum: se enseña para poder encontrarlo, no se sirve desde aquí. */
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9em;
+  background: var(--papel);
+  border: 1px solid var(--linea);
+  border-radius: 3px;
+  padding: 0.05rem 0.3rem;
+}
+a { color: var(--tinta); }
+
+/* El enlace al currículum: se ve como botón porque es la accion que mas se usa de la ficha. */
+.enlace-cv {
+  display: inline-block;
+  border: 1px solid var(--linea);
+  border-radius: 4px;
+  padding: 0.3rem 0.7rem;
+  text-decoration: none;
+  margin-right: 0.6rem;
+}
+.enlace-cv:hover { border-color: var(--apagado); }
+
+/* Los dos iconos de la fila: el curriculum y el retrato. Apagados hasta que el raton
+   pasa por encima, para que cien filas no parezcan un arbol de navidad. */
+.iconos { white-space: nowrap; width: 1px; }
+.icono {
+  text-decoration: none;
+  font-size: 1rem;
+  line-height: 1;
+  opacity: 0.3;
+  padding: 0.15rem 0.25rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+tbody tr:hover .icono { opacity: 1; }
+.icono:hover { transform: scale(1.15); }
+
+/* La cuenta de la nota, escrita. Numeros de ancho fijo para que se lea como una suma. */
+.cuenta {
+  font-variant-numeric: tabular-nums;
+  color: var(--apagado);
+  border-top: 1px solid var(--linea);
+  padding-top: 0.6rem;
+  margin-top: 0.9rem;
+  line-height: 1.7;
+}
+
+/* ------------------------------------------------------------------- la ventana */
+
+.modal {
+  border: none;
+  border-radius: 8px;
+  padding: 0;
+  background: var(--blanco);
+  color: var(--tinta);
+  width: min(1100px, calc(100vw - 3rem));
+  max-height: calc(100vh - 3rem);
+  /* La sombra y el fondo salen de la tinta de la paleta, no de negro puro: asi la
+     ventana se apoya sobre el mismo gris calido del resto y no sobre un agujero. */
+  box-shadow: 0 12px 40px color-mix(in srgb, var(--tinta) 18%, transparent);
+}
+.modal::backdrop { background: color-mix(in srgb, #0d0d0d 45%, transparent); }
+.modal-caja { padding: 1.5rem 1.75rem 2rem; }
+
+/* La ficha dentro de la ventana no necesita su propio marco: ya lo tiene. */
+.modal .titulo { position: sticky; top: 0; background: var(--blanco); z-index: 1; }
+.acciones { display: flex; gap: 0.5rem; align-items: center; }
+.cerrar {
+  border: 1px solid var(--linea);
+  border-radius: 4px;
+  padding: 0.3rem 0.6rem;
+  line-height: 1;
+}
