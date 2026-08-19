@@ -1,0 +1,33 @@
+{
+  "default_branch": "main",
+  "branches": [
+    "Edson",
+    "andy",
+    "dependabot/maven/com.tngtech.archunit-archunit-junit5-1.5.1",
+    "feat/ci-cd",
+    "main",
+    "origin",
+    "ricardo",
+    "ricardo-renaser"
+  ],
+  "parent": {
+    "Edson": "main",
+    "andy": "main",
+    "dependabot/maven/com.tngtech.archunit-archunit-junit5-1.5.1": "main",
+    "feat/ci-cd": "main",
+    "main": null,
+    "origin": "main",
+    "ricardo": "main",
+    "ricardo-renaser": "ricardo"
+  },
+  "order": [
+    "main",
+    "Edson",
+    "andy",
+    "dependabot/maven/com.tngtech.archunit-archunit-junit5-1.5.1",
+    "feat/ci-cd",
+    "origin",
+    "ricardo",
+    "ricardo-renaser"
+  ]
+}
