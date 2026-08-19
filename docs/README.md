@@ -37,6 +37,7 @@ requisitos nuevos el 14 de agosto y cambian bastante.
 | [Curso del backend](CURSO-BACKEND.md) | Ruta para entender el código que existe, en orden. Para quien entra al proyecto |
 | [Calificación con IA](CALIFICACION-CON-IA.md) | Cómo la IA lee el currículum, califica lo abierto y arma el Perfil de Talento. Y qué pasa si falla |
 | [Criba de currículums](CRIBA-DE-CURRICULUMS.md) | Cargar una convocatoria con una carpeta de currículums, pedir que la IA los lea y ver quién es el más apto |
+| [Fallos corregidos de la criba](FALLOS-CORREGIDOS-CRIBA.md) | Los cinco fallos que salieron al pasar 190 currículums reales. Cuatro no daban error |
 
 ### Diagramas
 

@@ -46,4 +46,8 @@ public interface TrabajoIaRepository extends JpaRepository<TrabajoIa, Long> {
              where t.id = :id and t.estado = 'PENDIENTE'
             """)
     int tomarSiEstaPendiente(@Param("id") Long id, @Param("ahora") Instant ahora);
+
+    // En bloque, para el ranking. Pedirlo de una en una son once consultas por
+    // candidato, y esa pantalla existe justamente para ver la tanda entera.
+    List<TrabajoIa> findByPostulacionIdInOrderByIdAsc(List<Long> postulacionIds);
 }

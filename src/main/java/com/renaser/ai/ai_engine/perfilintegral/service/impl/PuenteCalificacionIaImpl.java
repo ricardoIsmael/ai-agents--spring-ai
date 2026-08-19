@@ -160,10 +160,14 @@ public class PuenteCalificacionIaImpl implements PuenteCalificacionIa {
         fila.setPerfilResumen(recortar(resultado.perfilResumen(), 500));
         // Cinco como mucho, unidas por «|». Si el modelo devuelve quince, sobran diez: la
         // instrucción pide las más relevantes y una lista larga no se lee de un vistazo.
-        fila.setHabilidades(lista(resultado.habilidades()).stream()
+        // Vacio se guarda como null y no como cadena vacia, igual que el resto de textos:
+        // «no dijo ninguna habilidad» y «dijo la cadena vacia» no son lo mismo, y una
+        // pantalla que pinte lo que haya no debe enseñar un hueco donde no hay dato.
+        String habilidades = lista(resultado.habilidades()).stream()
                 .filter(h -> !esVacio(h))
                 .limit(5)
-                .collect(Collectors.joining(" | ")));
+                .collect(Collectors.joining(" | "));
+        fila.setHabilidades(habilidades.isEmpty() ? null : habilidades);
         fila.setExperienciaMesesTotal(mesesValidos(resultado.experienciaMesesTotal()));
         fila.setUltimoPuesto(recortar(resultado.ultimoPuesto(), 200));
         fila.setUltimaEmpresa(recortar(resultado.ultimaEmpresa(), 200));
