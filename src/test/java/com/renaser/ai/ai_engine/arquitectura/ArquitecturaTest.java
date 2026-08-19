@@ -1,15 +1,20 @@
 package com.renaser.ai.ai_engine.arquitectura;
 
 import com.tngtech.archunit.base.DescribedPredicate;
+import com.renaser.ai.ai_engine.comun.config.ConfiguracionSwagger;
 import com.renaser.ai.ai_engine.postulacion.entity.Postulacion;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
+import com.tngtech.archunit.lang.ArchCondition;
 import com.tngtech.archunit.lang.ArchRule;
+import com.tngtech.archunit.lang.ConditionEvents;
+import com.tngtech.archunit.lang.SimpleConditionEvent;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Set;
 
@@ -207,6 +212,46 @@ class ArquitecturaTest {
                 .because("una entidad que sale por la API convierte cualquier columna nueva en "
                         + "un cambio de contrato, y expone campos que nadie decidió publicar. "
                         + "Para eso están los dto");
+
+        regla.check(codigo);
+    }
+
+    // ========================================================================
+    // El candado de Swagger
+    // ========================================================================
+
+    /**
+     * {@code ConfiguracionSwagger} avisa en su javadoc: «al añadir un controlador nuevo hay
+     * que sumarlo aquí, o sus endpoints saldrán en Swagger sin candado». Un aviso en prosa
+     * dura hasta el primer despiste; esta prueba lo convierte en compilación rota.
+     *
+     * <p>El motor de agentes ({@code ai/}) queda fuera a propósito: sus endpoints van sin
+     * candado hoy, y así lo declara la cadena {@code @Order(3)} de {@code
+     * ConfiguracionSeguridad}. Cuando el módulo gane autenticación, se quita la excepción.
+     */
+    @Test
+    void todoControladorNuevoEstaEnLaListaDelCandadoDeSwagger() {
+        Set<String> cubiertos = ConfiguracionSwagger.paquetesConCandado();
+
+        ArchRule regla = classes()
+                .that().areAnnotatedWith(RestController.class)
+                .and().resideOutsideOfPackage(RAIZ + ".ai..")
+                .should(new ArchCondition<>("estar en un paquete que ConfiguracionSwagger enumera") {
+                    @Override
+                    public void check(JavaClass clase, ConditionEvents eventos) {
+                        String paquete = clase.getPackageName();
+                        boolean cubierto = cubiertos.stream()
+                                .anyMatch(c -> paquete.equals(c) || paquete.startsWith(c + "."));
+                        if (!cubierto) {
+                            eventos.add(SimpleConditionEvent.violated(clase, clase.getFullName()
+                                    + " no está en la lista de ConfiguracionSwagger: sus endpoints"
+                                    + " saldrían en Swagger sin candado"));
+                        }
+                    }
+                })
+                .because("la lista de ConfiguracionSwagger es la que pone el candado del token "
+                        + "en Swagger, y un controlador fuera de ella publica endpoints que "
+                        + "parecen abiertos");
 
         regla.check(codigo);
     }

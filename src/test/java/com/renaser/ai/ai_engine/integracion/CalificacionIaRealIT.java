@@ -64,13 +64,15 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p><b>No corre sola.</b> Hace falta pedirla:
  *
  * <pre>{@code
- * RENASER_IA_REAL=si ./mvnw test -Dtest=CalificacionIaRealIT
+ * RENASER_IA_REAL=si ./mvnw verify -Dit.test=CalificacionIaRealIT
  * }</pre>
  *
- * <p>La bandera existe porque el {@code pom.xml} mete los {@code *IT.java} en la misma tanda
- * que el resto, así que antes esta prueba se disparaba con cualquier {@code mvn test}. Quien
- * clonara el repositorio y lanzara las pruebas gastaba dinero sin saberlo, y si la cuenta no
- * tenía saldo se llevaba cuatro fallos con un 402 que no explicaba nada.
+ * <p>La bandera nació cuando el {@code pom.xml} metía los {@code *IT.java} en la misma tanda
+ * que el resto y esta prueba se disparaba con cualquier {@code mvn test}: quien clonara el
+ * repositorio y lanzara las pruebas gastaba dinero sin saberlo. Hoy los {@code *IT} corren
+ * aparte, con failsafe en {@code mvn verify}, pero la bandera se queda: en la integración
+ * continua {@code verify} corre en cada Pull Request, sin clave y sin intención de pagar
+ * llamadas, y sin la guardia esta prueba saldría roja en todas.
  *
  * <p>Se apaga por defecto y no al revés a propósito: <b>olvidarse de encenderla no cuesta
  * nada; olvidarse de apagarla, sí.</b> Y lo que aquí se comprueba —que el contrato con el
