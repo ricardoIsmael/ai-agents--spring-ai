@@ -105,4 +105,26 @@ public interface ColaCalificacionIa {
      * mismo, así que hay que poder distinguirlas.
      */
     String pasadaDe(Long postulacionId);
+
+    /**
+     * Lo mismo que {@link #comoVa} y {@link #pasadaDe}, pero de una tanda entera y en una
+     * sola consulta.
+     *
+     * <p><b>Existe por una razón de peso, no por elegancia.</b> El ranking pinta una fila
+     * por candidato y preguntaba dos veces por cada uno; con cien postulantes eran
+     * doscientas consultas solo para dos columnas, en la pantalla que existe justamente
+     * para mirar la tanda completa.
+     *
+     * @return una entrada por postulación pedida, siempre; nunca falta ninguna
+     */
+    java.util.Map<Long, Estado> estadoDe(java.util.List<Long> postulacionIds);
+
+    /**
+     * En qué punto va la calificación de un candidato.
+     *
+     * @param comoVa SIN_EMPEZAR, EN_CURSO, TERMINADA o FALLIDA
+     * @param pasada FINA, RAPIDA o vacío si todavía no hay retrato
+     */
+    record Estado(String comoVa, String pasada) {
+    }
 }

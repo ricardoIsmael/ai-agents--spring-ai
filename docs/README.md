@@ -1,7 +1,8 @@
 # Documentación · Sistema de selección Renaser
 
 Backend en Java + Spring Boot para el módulo de selección de personal de Renaser Consulting.
-**Va dentro de RENASER OS**: su frontend Next.js ya existe y llama a este backend por su API.
+**Va dentro de RENASER OS**: su frontend ya existe —React con Vite— y llama a este backend por
+su API. Sus pantallas de selección se están construyendo ahora.
 
 ---
 
@@ -37,6 +38,8 @@ requisitos nuevos el 14 de agosto y cambian bastante.
 | [Curso del backend](CURSO-BACKEND.md) | Ruta para entender el código que existe, en orden. Para quien entra al proyecto |
 | [Calificación con IA](CALIFICACION-CON-IA.md) | Cómo la IA lee el currículum, califica lo abierto y arma el Perfil de Talento. Y qué pasa si falla |
 | [Criba de currículums](CRIBA-DE-CURRICULUMS.md) | Cargar una convocatoria con una carpeta de currículums, pedir que la IA los lea y ver quién es el más apto |
+| [Fallos corregidos de la criba](FALLOS-CORREGIDOS-CRIBA.md) | Los cinco fallos que salieron al pasar 190 currículums reales. Cuatro no daban error |
+| [Comprobaciones automáticas](COMPROBACIONES-AUTOMATICAS.md) | Qué se comprueba solo: 128 pruebas y 7 reglas de arquitectura. Y qué falta: la seguridad, con Semgrep |
 | [Conectar la base a Supabase](CONEXION-SUPABASE.md) | Cómo hacer que la base de datos deje de vivir en tu máquina y pase a Supabase. Paso a paso, y cómo volver atrás |
 
 ### Diagramas
@@ -69,7 +72,6 @@ Material de origen. Solo se consulta:
 | `CAMBIOS-DEL-DOCUMENTO-NUEVO.md` | Qué cambió con el documento nuevo y qué se decidió |
 | `ANALISIS-DOCUMENTOS.md` | Qué documento manda sobre cuál y por qué |
 | [`COMPROBACION-SIN-TECNICA.md`](insumos/COMPROBACION-SIN-TECNICA.md) | El sistema en dos páginas sin nada técnico, y las 93 tablas rastreadas contra él. **Su primera parte se lee sola** |
-| `DECISIONES.md` | Decisiones tomadas durante el análisis |
 | `NOTAS-TEMPORALES.md` | Lo que sigue pendiente |
 | `entrevista-cliente-2026-08-08.md` | Transcripción de la reunión |
 | `pruebas-tecnicas/` | **Las cinco pruebas del puesto reales** (ARQ, BIO, CIVIL, CX, SIS), tal como se enviaron a candidatos |
@@ -103,18 +105,19 @@ pasa), **sin datos** (falta evidencia) o **reserva** (no para esta vacante, pero
 | Trabajo en segundo plano | RabbitMQ |
 | Inteligencia artificial · conversación y calificación | DeepSeek, que es un servicio externo |
 | Inteligencia artificial · búsqueda por significado | Google Gemini, que es un servicio externo |
-| Frontend | Next.js, el de RENASER OS |
+| Frontend | React con Vite, el de RENASER OS |
 | Identidad del equipo | RENASER OS emite el token; aquí solo se valida |
 
 **Qué sale de Renaser y qué no.** La base de datos y los archivos viven en servidores de
 Renaser. Los dos modelos son de fuera: DeepSeek califica y Google busca por significado.
 Renaser aceptó que los datos de candidatos salgan hacia ellos el 18 de agosto de 2026.
 
-Hoy **ningún dato de un candidato sale todavía**, porque la selección de personal aún no
-llama a ningún modelo: la inteligencia artificial no lee ni califica a nadie. Eso cambia en
-cuanto funcionen los agentes que califican el Perfil Integral. Antes de que pase por ahí el
-primer candidato real, **Renaser tiene que aprobar un texto de consentimiento nuevo** que
-nombre a las dos empresas y diga qué se les envía: el actual no menciona a ninguna.
+⚠️ **Desde el 18/08/2026 los datos de candidatos sí salen.** Los tres agentes que califican el
+Perfil Integral ya corren, y el currículum viaja hacia DeepSeek —anonimizado: sin edad, sexo ni
+estado civil—. Antes de que pase por ahí el primer candidato real, **Renaser tiene que aprobar un
+texto de consentimiento nuevo** que nombre a las dos empresas y diga qué se les envía: el actual
+no menciona a ninguna. Hay un borrador en
+[BORRADOR-CONSENTIMIENTO-v1.1.md](BORRADOR-CONSENTIMIENTO-v1.1.md).
 
 ---
 
@@ -157,8 +160,8 @@ una regla de seguridad desde la primera versión, no algo que se añada después
 | Decidir si se construye el módulo psicométrico propio | No: su 5% se reparte mientras tanto |
 | Confirmar el catálogo de puestos y sus nombres definitivos | No: hay once plantillas nombradas |
 | Confirmar la máquina de estados, que es propuesta nuestra | No: está construida y es coherente |
-| Qué máquina sostiene el modelo de inteligencia artificial | No en diseño; sí al construir |
-| **Si la IA que lee a un candidato corre en el servidor de Renaser o en un servicio de fuera** | **Sí, al Perfil Integral.** Hoy no bloquea nada porque la IA aún no lee a nadie, pero de esto dependen los textos de consentimiento |
+| **Un tope de gasto para DeepSeek y para Google** | No hoy, pero conviene ponerlo: los modelos ya no corren en una máquina de Renaser, **cada consulta se paga** |
+| **Aprobar el texto de consentimiento que nombre a DeepSeek y a Google** | **Sí, a usar el sistema con gente real.** Ya está decidido que la IA corre fuera y ya lee currículums; falta el texto que se lo diga al candidato |
 | **Medir cómo lo hacen hoy**: horas por vacante, postulaciones por vacante y qué tasa de finalización considerarían buena | **Sí, a la medición.** El MVP se puede construir, pero sin línea base no se puede decir si funcionó |
 | **Currículums y pruebas ya corregidos a mano** | **Sí, al paso 0** y a saber si la IA califica igual que una persona |
 

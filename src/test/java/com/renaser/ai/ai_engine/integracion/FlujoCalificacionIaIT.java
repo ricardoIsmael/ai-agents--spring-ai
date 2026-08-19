@@ -35,6 +35,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.rabbitmq.RabbitMQContainer;
 
 import java.io.ByteArrayOutputStream;
+import java.math.BigDecimal;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -131,11 +132,29 @@ public class FlujoCalificacionIaIT {
         static volatile boolean falla = false;
         static final List<String> enviosRecibidos = new CopyOnWriteArrayList<>();
 
+        /**
+         * Si el modelo razonó o no en cada llamada, como «EVIDENCIA_CV:false».
+         *
+         * <p>Es lo único que distingue de verdad a las dos pasadas. Desde fuera las dos
+         * guardan notas y las dos mueven la postulación, así que sin mirar esta bandera no
+         * hay forma de afirmar que la rápida es rápida: quedaría probado el recorrido y sin
+         * probar la razón de que exista.
+         */
+        static final List<String> razonoPorAgente = new CopyOnWriteArrayList<>();
+
         private static final Pattern RESPUESTA_ID = Pattern.compile("\"respuestaId\"\\s*:\\s*(\\d+)");
 
         @Override
         public RespuestaModelo preguntar(String agenteCodigo, String instruccion, String contenido) {
+            // Quien no dice nada, razona: es lo que hacía el sistema antes de las dos pasadas
+            return preguntar(agenteCodigo, instruccion, contenido, true);
+        }
+
+        @Override
+        public RespuestaModelo preguntar(String agenteCodigo, String instruccion, String contenido,
+                                         boolean razona) {
             enviosRecibidos.add(instruccion + "\n" + contenido);
+            razonoPorAgente.add(agenteCodigo + ":" + razona);
             if (falla) {
                 throw new IllegalStateException("el proveedor del modelo no responde");
             }
@@ -145,11 +164,28 @@ public class FlujoCalificacionIaIT {
 
         private String respuestaDe(String agenteCodigo, String contenido) {
             return switch (agenteCodigo) {
+                case "DATOS_CV" -> datosCv();
                 case "EVIDENCIA_CV" -> evidenciaCv();
                 case "EVALUADOR" -> evaluador(contenido);
                 case "POTENCIAL_RIESGO" -> potencialRiesgo();
                 default -> throw new IllegalStateException("agente inesperado: " + agenteCodigo);
             };
+        }
+
+        /**
+         * La ficha del candidato. Devuelve ocho habilidades a propósito, cuando el contrato
+         * dice cinco como mucho: recortarlas es del sistema, no del modelo, y un modelo de
+         * verdad se pasa de la raya en cuanto el currículum trae una lista larga.
+         */
+        private String datosCv() {
+            return """
+                    {"nombre":"Camila Rojas","email":"camila@correo.pe","telefono":"999888777",
+                     "perfilResumen":"Analista de procesos que automatiza y mide lo que hace.",
+                     "habilidades":["SQL","Automatizacion","Documentacion","Excel","Procesos",
+                                    "Python","Power BI","Scrum"],
+                     "experienciaMesesTotal":72,"ultimoPuesto":"Analista de procesos",
+                     "ultimaEmpresa":"Consultora Andina","ultimaMesesDuracion":30,
+                     "educacionMaxima":"Universitaria completa"}""";
         }
 
         private String evidenciaCv() {
@@ -375,6 +411,431 @@ public class FlujoCalificacionIaIT {
                 .isEqualTo(1);
 
         ModeloDePrueba.falla = false;
+    }
+
+    /**
+     * La primera pasada sobre la tanda entera, y la lista ordenada que sale de ella.
+     *
+     * <p>Es el recorrido que antes no existía: hasta ahora la IA solo entraba cuando el
+     * candidato ya había entregado su evaluación, así que una tanda recién llegada —cien
+     * currículums y nadie que haya respondido nada— no se podía mirar sin abrir los PDF uno
+     * por uno.
+     *
+     * <p>Se comprueban las cuatro cosas que la sostienen:
+     * <ul>
+     *   <li>El modelo <b>no razona</b> en esta pasada. Es su única razón de ser.
+     *   <li>El evaluador no se llama: no hay respuestas que puntuar y la llamada se ahorra.
+     *   <li>Quien ya tiene retrato no se vuelve a calificar, aunque se pulse el botón.
+     *   <li>La ficha de datos sale del currículum recortado, así que no trae edad ni sexo.
+     * </ul>
+     *
+     * <p><b>Y de paso comprueba que el aviso a la cola sale después del commit.</b> Aquí se
+     * encolan tres candidatos dentro de una sola transacción, y del otro lado hay ocho
+     * consumidores. Si el mensaje saliera antes de guardar la fila, uno lo agarraría en
+     * milisegundos, no encontraría el trabajo y lo soltaría: los tres se quedarían en
+     * PENDIENTE para siempre y la espera de aquí abajo se agotaría sin que nada diera error.
+     */
+    @Test
+    @Order(3)
+    void laCribaRapidaLeeLaTandaSinRazonarYSaltaAlEvaluador() throws Exception {
+        ModeloDePrueba.falla = false;
+        ModeloDePrueba.razonoPorAgente.clear();
+
+        // Dos recién llegados: subieron su currículum y nada más. Nadie ha respondido nada,
+        // que es justo la situación en la que se pide una criba.
+        String reciénLlegadoA = postularConCurriculumReal("ana@correo.pe");
+        String reciénLlegadoB = postularConCurriculumReal("beto@correo.pe");
+
+        String respuesta = conToken(post("/api/v1/panel/vacantes/" + vacanteId + "/criba-rapida"),
+                tokenEquipo, null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estado").value("ENCOLADA"))
+                .andReturn().getResponse().getContentAsString();
+
+        // Tres y no cuatro. Camila ya tiene su retrato de la pasada fina y se salta sola;
+        // Luis no lo tiene —su intento falló y no se le inventó ninguna nota— así que
+        // vuelve a entrar. Eso es la regla de «no calificar dos veces», por los dos lados.
+        assertThat(json.readTree(respuesta).get("candidatos").asInt()).isEqualTo(3);
+
+        long idA = idDe(reciénLlegadoA);
+        long idB = idDe(reciénLlegadoB);
+
+        esperarA(() -> contar("""
+                select count(*) from trabajo_ia
+                where modo = 'RAPIDA' and estado = 'TERMINADO'""") == 9,
+                "los tres agentes de la pasada rápida terminen con los tres candidatos");
+
+        // 1 · Ni una sola llamada razonó. Si esto se rompe, la pasada rápida tarda lo mismo
+        // que la cuidadosa y las dos dejan de tener sentido por separado.
+        assertThat(ModeloDePrueba.razonoPorAgente)
+                .isNotEmpty()
+                .allSatisfy(llamada -> assertThat(llamada).endsWith(":false"));
+
+        // 2 · El evaluador no se llamó: sin respuestas entregadas no tenía nada que puntuar
+        assertThat(ModeloDePrueba.razonoPorAgente)
+                .noneMatch(llamada -> llamada.startsWith("EVALUADOR"));
+        assertThat(contar("""
+                select count(*) from trabajo_ia
+                where modo = 'RAPIDA' and agente_codigo = 'EVALUADOR'""")).isZero();
+
+        // Y sí corrieron los tres que sí tocaban, en su orden
+        assertThat(jdbc.queryForList("""
+                select distinct agente_codigo from trabajo_ia where modo = 'RAPIDA'
+                order by agente_codigo""", String.class))
+                .containsExactly("DATOS_CV", "EVIDENCIA_CV", "POTENCIAL_RIESGO");
+
+        // 3 · La ficha de datos, que es lo que hace legible la tabla sin abrir un PDF
+        Map<String, Object> ficha = jdbc.queryForMap(
+                "select * from dato_cv where postulacion_id = ?", idA);
+        assertThat(ficha.get("nombre")).isEqualTo("Camila Rojas");
+        assertThat(ficha.get("ultimo_puesto")).isEqualTo("Analista de procesos");
+        assertThat(ficha.get("experiencia_meses_total")).isEqualTo(72);
+        assertThat(ficha.get("ejecucion_ia_id")).isNotNull();
+
+        // Cinco habilidades como mucho: el modelo devolvió ocho y el sistema recorta
+        assertThat((String) ficha.get("habilidades")).isNotNull();
+        assertThat(((String) ficha.get("habilidades")).split("\\|")).hasSize(5);
+
+        // 4 · La ficha salió del currículum recortado: la edad, el sexo y el estado civil
+        // no llegaron al agente y por eso no hay dónde guardarlos (RF-41)
+        String envioDatos = jdbc.queryForObject("""
+                select envio from ejecucion_ia
+                where agente_codigo = 'DATOS_CV' order by id limit 1""", String.class);
+        assertThat(envioDatos)
+                .doesNotContain("34 años")
+                .doesNotContain("Femenino")
+                .doesNotContain("Casada");
+
+        // 5 · Los dos quedaron esperando a una persona, con su grupo de prioridad puesto
+        for (long id : List.of(idA, idB)) {
+            Map<String, Object> postulacion = jdbc.queryForMap(
+                    "select estado_codigo, grupo_prioridad from postulacion where id = ?", id);
+            assertThat(postulacion.get("estado_codigo")).isEqualTo("PERFIL_POR_CONFIRMAR");
+            assertThat(postulacion.get("grupo_prioridad")).isNotNull();
+        }
+
+        // 6 · Pedirla otra vez no cuesta nada: ya no queda nadie sin calificar
+        String segunda = conToken(post("/api/v1/panel/vacantes/" + vacanteId + "/criba-rapida"),
+                tokenEquipo, null)
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(json.readTree(segunda).get("candidatos").asInt()).isZero();
+    }
+
+    /**
+     * La lista ordenada de la convocatoria.
+     *
+     * <p>Es la pantalla que contesta «¿a quién llamo primero?». Lo que se comprueba aquí es
+     * el orden —manda el grupo de prioridad y no la nota— y que cada fila traiga lo que
+     * hace falta para decidir sin abrir la ficha: quién es, de qué pasada viene su nota,
+     * cómo se llama su archivo y cuánto pesa cada criterio.
+     */
+    @Test
+    @Order(4)
+    void elRankingOrdenaPorGrupoYDejaAlSinCalificarAlFinal() throws Exception {
+        // Uno más que solo subió su currículum y al que nadie ha calificado todavía. Es el
+        // caso que importa: un candidato sin nota no puede desaparecer de la lista, ni
+        // colarse arriba porque su casilla esté vacía.
+        String sinCalificar = postularConCurriculumReal("dana@correo.pe");
+
+        String cuerpo = conToken(get("/api/v1/panel/vacantes/" + vacanteId + "/ranking"),
+                tokenEquipo, null)
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        JsonNode ranking = json.readTree(cuerpo);
+        JsonNode filas = ranking.get("filas");
+
+        // Están todos los de la convocatoria, calificados o no
+        assertThat(ranking.get("total").asInt()).isEqualTo(5);
+        assertThat(filas.size()).isEqualTo(5);
+
+        // La numeración se pone después de ordenar: es la posición en la tanda
+        List<Integer> puestos = new ArrayList<>();
+        List<String> grupos = new ArrayList<>();
+        for (JsonNode fila : filas) {
+            puestos.add(fila.get("puesto").asInt());
+            grupos.add(fila.get("grupoPrioridad").isNull() ? null
+                    : fila.get("grupoPrioridad").asText());
+        }
+        assertThat(puestos).containsExactly(1, 2, 3, 4, 5);
+
+        // El recién llegado cierra la lista: si el nulo se ordenara como un cero alto, o
+        // como el primero de la lista de grupos, encabezaría la tanda sin haber sido leído.
+        JsonNode ultima = filas.get(filas.size() - 1);
+        assertThat(ultima.get("grupoPrioridad").isNull()).isTrue();
+        assertThat(ultima.get("notaEtapa").isNull()).isTrue();
+        assertThat(ultima.get("uuid").asText()).isEqualTo(sinCalificar);
+        // Y aun así se le ve el nombre del archivo: es lo que permite ir a por su currículum
+        assertThat(ultima.get("archivoNombre").asText()).isEqualTo("cv.pdf");
+        assertThat(ranking.get("calificados").asInt()).isEqualTo(4);
+
+        // El orden lo manda el grupo, no el número: alguien con 92 y un riesgo crítico no
+        // va por delante de alguien con 88 y ninguno.
+        List<String> ordenGrupos = List.of("ALTA", "POTENCIAL_CON_RIESGO", "NO_PRIORIZADO");
+        int anterior = -1;
+        for (String grupo : grupos) {
+            int donde = grupo == null ? ordenGrupos.size() : ordenGrupos.indexOf(grupo);
+            assertThat(donde).isGreaterThanOrEqualTo(anterior);
+            anterior = donde;
+        }
+
+        // Y dentro del mismo grupo, la nota baja
+        BigDecimal notaAnterior = null;
+        String grupoAnterior = null;
+        for (JsonNode fila : filas) {
+            if (fila.get("notaEtapa").isNull()) continue;
+            String grupo = fila.get("grupoPrioridad").asText();
+            BigDecimal nota = fila.get("notaEtapa").decimalValue();
+            if (grupo.equals(grupoAnterior)) {
+                assertThat(nota).isLessThanOrEqualTo(notaAnterior);
+            }
+            grupoAnterior = grupo;
+            notaAnterior = nota;
+        }
+
+        // Cada fila calificada trae lo que la pantalla necesita para explicarse sola
+        JsonNode calificada = null;
+        for (JsonNode fila : filas) {
+            if (!fila.get("notaEtapa").isNull()) {
+                calificada = fila;
+                break;
+            }
+        }
+        assertThat(calificada).isNotNull();
+        // De qué pasada viene su nota: una de la rápida es provisional y hay que saberlo
+        assertThat(calificada.get("pasada").asText()).isIn("RAPIDA", "FINA");
+        // Con qué archivo se le puede encontrar en la carpeta del equipo
+        assertThat(calificada.get("archivoNombre").asText()).isEqualTo("cv.pdf");
+        // Y quién es, sin abrir el PDF
+        assertThat(calificada.get("datos").get("nombre").asText()).isEqualTo("Camila Rojas");
+
+        // Los ocho criterios del currículum, cada uno con su peso: un 95 en un criterio que
+        // pesa 20 y un 95 en uno que pesa 5 se leen igual en pantalla y no valen lo mismo.
+        JsonNode notas = calificada.get("notasCriterio");
+        assertThat(notas.size()).isEqualTo(8);
+        for (JsonNode nota : notas) {
+            assertThat(nota.get("peso").isNull())
+                    .withFailMessage("Sin el peso, la pantalla no puede explicar la cuenta: "
+                            + "un 95 en un criterio que pesa 20 y otro en uno que pesa 5 se "
+                            + "leen igual y no valen lo mismo")
+                    .isFalse();
+            assertThat(nota.get("criterio").asText()).isNotBlank();
+        }
+
+        // Y los pesos suman lo que tiene que sumar el currículum en este nivel de puesto:
+        // si un día se cambian desde el panel, la cuenta de la pantalla sigue cuadrando.
+        BigDecimal sumaPesos = BigDecimal.ZERO;
+        for (JsonNode nota : notas) {
+            sumaPesos = sumaPesos.add(nota.get("peso").decimalValue());
+        }
+        assertThat(sumaPesos).isPositive();
+    }
+
+    /**
+     * La segunda pasada, solo sobre la parte alta de la tanda.
+     *
+     * <p>Aquí el modelo sí razona, y sus notas pisan las provisionales. Lo que importa es
+     * que no se gaste en la tanda entera: si volviera a mirar a todos, la primera pasada no
+     * habría ahorrado nada.
+     */
+    @Test
+    @Order(5)
+    void laCribaFinaVuelveSoloSobreLosDeArribaYEsaSiRazona() throws Exception {
+        ModeloDePrueba.razonoPorAgente.clear();
+
+        // Todos los candidatos reciben la misma respuesta del doble, así que sus notas
+        // empatan y el orden entre ellos no se puede predecir desde aquí. Lo que sí se
+        // puede es leer la lista y calcular el corte con la misma cuenta que hace el
+        // sistema: se busca al primero que todavía viene de la pasada rápida y se pone el
+        // porcentaje justo para que el corte llegue hasta él y no más allá.
+        JsonNode antes = json.readTree(conToken(
+                get("/api/v1/panel/vacantes/" + vacanteId + "/ranking"), tokenEquipo, null)
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString());
+
+        List<String> pasadas = new ArrayList<>();
+        for (JsonNode fila : antes.get("filas")) {
+            if (!fila.get("notaEtapa").isNull()) {
+                pasadas.add(fila.get("pasada").asText());
+            }
+        }
+        int conNota = pasadas.size();
+        int hastaDonde = pasadas.indexOf("RAPIDA") + 1;
+        assertThat(hastaDonde)
+                .withFailMessage("Para esta prueba tiene que quedar alguien con nota "
+                        + "provisional de la pasada rápida")
+                .isPositive();
+        int porcentaje = (int) Math.ceil(hastaDonde * 100.0 / conNota);
+
+        // Un corte de verdad: mira a los de arriba y deja fuera al resto. Si esto dejara de
+        // ser cierto, la primera pasada no habría ahorrado nada.
+        assertThat(hastaDonde).isLessThan(conNota);
+
+        jdbc.update("update parametro set valor = ? where codigo = 'porcentaje_criba_fina'",
+                String.valueOf(porcentaje));
+
+        int conNotaAntes = contar(
+                "select count(*) from nota_etapa where etapa_codigo = 'PERFIL_INTEGRAL'");
+        int finasAntes = contar("""
+                select count(*) from trabajo_ia
+                where modo = 'FINA' and agente_codigo = 'POTENCIAL_RIESGO'
+                  and estado = 'TERMINADO'""");
+
+        String respuesta = conToken(post("/api/v1/panel/vacantes/" + vacanteId + "/criba-fina"),
+                tokenEquipo, null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estado").value("ENCOLADA"))
+                .andReturn().getResponse().getContentAsString();
+
+        // Solo los que entraron en el corte y todavía no habían pasado por la fina: quien
+        // ya la tiene no repite, porque la suya es la definitiva.
+        long esperados = pasadas.subList(0, hastaDonde).stream()
+                .filter(p -> !"FINA".equals(p)).count();
+        int encolados = json.readTree(respuesta).get("candidatos").asInt();
+        assertThat(encolados)
+                .withFailMessage("La segunda pasada tiene que mirar a los de arriba y solo a "
+                        + "ellos, saltándose a quien ya pasó por ella")
+                .isEqualTo((int) esperados);
+
+        esperarA(() -> contar("""
+                select count(*) from trabajo_ia
+                where modo = 'FINA' and agente_codigo = 'POTENCIAL_RIESGO'
+                  and estado = 'TERMINADO'""") == finasAntes + encolados,
+                "la segunda pasada termine con los de arriba");
+
+        // 1 · Esta sí razona: es lo que la hace lenta y lo que la hace fiable
+        assertThat(ModeloDePrueba.razonoPorAgente)
+                .isNotEmpty()
+                .allSatisfy(llamada -> assertThat(llamada).endsWith(":true"));
+
+        // 2 · Y el trabajo quedó marcado como de la pasada fina. Sin la columna «modo» la
+        // cola habría encontrado el trabajo de la rápida y no habría corrido nada.
+        assertThat(contar("""
+                select count(*) from trabajo_ia
+                where modo = 'FINA' and agente_codigo = 'DATOS_CV'"""))
+                .withFailMessage("La fila de la pasada fina no incluye al lector de datos: "
+                        + "sus datos ya se sacaron en la rápida y no cambian")
+                .isZero();
+
+        // 3 · Nadie perdió su nota por volver a pasar: se pisan, no se borran
+        assertThat(contar("select count(*) from nota_etapa where etapa_codigo = 'PERFIL_INTEGRAL'"))
+                .isEqualTo(conNotaAntes);
+
+        // 4 · Y su nota deja de ser provisional: el ranking ya los cuenta como pasada fina
+        JsonNode despues = json.readTree(conToken(
+                get("/api/v1/panel/vacantes/" + vacanteId + "/ranking"), tokenEquipo, null)
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString());
+        assertThat(despues.get("conPasadaFina").asInt())
+                .isEqualTo(antes.get("conPasadaFina").asInt() + encolados);
+
+        jdbc.update("update parametro set valor = '50' where codigo = 'porcentaje_criba_fina'");
+    }
+
+    /**
+     * Calificar a uno solo con su currículum, sin que haya entregado nada.
+     *
+     * <p>Antes era imposible: el sistema exigía una evaluación entregada y respondía que no
+     * había nada que calificar. Es el botón de la ficha, el que se usa cuando alguien quiere
+     * volver a mirar a un candidato concreto de la tanda.
+     */
+    @Test
+    @Order(6)
+    void seCribaUnCurriculumSueltoAunqueNadieHayaRespondidoNada() throws Exception {
+        String codigo = postularConCurriculumReal("carla@correo.pe");
+        long postulacionId = idDe(codigo);
+
+        // No respondió absolutamente nada. La evaluación existe desde que se postuló —se
+        // crea vacía al llegar— así que lo que dice si hay algo que puntuar no es esa fila,
+        // son las respuestas. Sin ellas, el evaluador no tiene trabajo.
+        assertThat(contar("""
+                select count(*) from respuesta
+                where evaluacion_id = (select evaluacion_id from postulacion where id = %d)"""
+                .formatted(postulacionId))).isZero();
+
+        conToken(post("/api/v1/panel/postulaciones/" + postulacionId + "/criba-cv"),
+                tokenEquipo, null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estado").value("ENCOLADA"));
+
+        esperarA(() -> "PERFIL_POR_CONFIRMAR".equals(jdbc.queryForObject(
+                "select estado_codigo from postulacion where id = ?", String.class, postulacionId)),
+                "la criba de un currículum suelto termine");
+
+        // Se armó el retrato con lo único que había: el currículum
+        assertThat(contar("select count(*) from perfil_talento where postulacion_id = "
+                + postulacionId)).isEqualTo(1);
+        assertThat(contar("select count(*) from nota_criterio where postulacion_id = "
+                + postulacionId)).isEqualTo(8);
+
+        // El evaluador se saltó solo, sin gastar una llamada al modelo para no puntuar nada
+        assertThat(contar("""
+                select count(*) from trabajo_ia
+                where postulacion_id = %d and agente_codigo = 'EVALUADOR'"""
+                .formatted(postulacionId))).isZero();
+
+        // Y quedó con nota y con grupo, listo para que alguien decida
+        assertThat(jdbc.queryForObject(
+                "select grupo_prioridad from postulacion where id = ?", String.class, postulacionId))
+                .isNotNull();
+    }
+
+    /**
+     * Pedir la segunda pasada antes de que exista una primera.
+     *
+     * <p>Sin ninguna nota, «los de arriba» no existen y la lista sale por orden alfabético:
+     * la pasada cuidadosa se gastaría en quien tocó por la letra de su apellido. Es un error
+     * fácil de cometer —basta pulsar el botón mientras la tanda se está cargando— y caro de
+     * descubrir, porque no falla: califica, y califica a quien no era.
+     */
+    @Test
+    @Order(7)
+    void laSegundaPasadaSeNiegaSiTodaviaNoHayNingunaNota() throws Exception {
+        long vacanteVacia = crearVacanteSinCandidatos();
+        int trabajosAntes = contar("select count(*) from trabajo_ia");
+
+        conToken(post("/api/v1/panel/vacantes/" + vacanteVacia + "/criba-fina"), tokenEquipo, null)
+                .andExpect(status().isConflict());
+
+        // Y no encoló nada: negarse tiene que ser gratis
+        assertThat(contar("select count(*) from trabajo_ia")).isEqualTo(trabajosAntes);
+    }
+
+    /**
+     * Una convocatoria más, sin candidatos y sin publicar.
+     *
+     * <p>No reutiliza {@code prepararVacantePublicada}: aquella crea el puesto DEV_WEB y las
+     * once preguntas de la prueba, y los códigos son únicos por organización, así que
+     * llamarla dos veces revienta. Aquí basta con una vacante que exista.
+     */
+    private long crearVacanteSinCandidatos() throws Exception {
+        Long areaId = jdbc.queryForObject("select id from area limit 1", Long.class);
+        Long puestoId = jdbc.queryForObject("select id from puesto limit 1", Long.class);
+
+        long solicitudId = Long.parseLong(leer(conToken(post("/api/v1/panel/solicitudes"), tokenEquipo, """
+                {"areaId": %d, "urgencia": "NORMAL",
+                 "nivelPuestoCodigo": "EJECUCION", "familiaCodigo": "TECNOLOGIA",
+                 "resultadoPrincipal": "Sostener el portal",
+                 "motivo": "No se llega a los plazos",
+                 "consecuenciaNoContratar": "Se retrasa el MVP",
+                 "analisisCapacidad": "Se evaluó automatizar y no alcanza",
+                 "responsableUsuarioId": 1,
+                 "resultadosEsperados": [
+                   {"descripcion": "Publicar el portal", "indicador": "en producción"},
+                   {"descripcion": "Reducir bugs", "indicador": "la mitad"},
+                   {"descripcion": "Documentar", "indicador": "docs al día"}
+                 ]}""".formatted(areaId))
+                .andReturn().getResponse().getContentAsString(), "id"));
+
+        conToken(post("/api/v1/panel/solicitudes/" + solicitudId + "/aprobacion"), tokenEquipo,
+                "{\"motivo\":\"Hay presupuesto\"}").andExpect(status().isOk());
+
+        return Long.parseLong(leer(conToken(post("/api/v1/panel/vacantes"), tokenEquipo, """
+                {"solicitudTalentoId": %d, "puestoId": %d,
+                 "titulo": "Otra convocatoria", "descripcion": "Sin candidatos todavía",
+                 "tipoCierre": "PERMANENTE", "responsableUsuarioId": 1}"""
+                .formatted(solicitudId, puestoId))
+                .andReturn().getResponse().getContentAsString(), "id"));
     }
 
     // ============ Apoyo ============

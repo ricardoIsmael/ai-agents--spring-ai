@@ -23,8 +23,15 @@ Sirve para tres cosas:
 - **Entender el sistema.** Un modelo de datos bien contado explica el negocio mejor que
   cualquier otro documento.
 
-**La base todavía está vacía.** No hay ni una migración escrita, así que todo lo de aquí se
-puede discutir sin coste de migración.
+**La base ya está construida** (18/08/2026). Las migraciones `V1` a `V19` viven en
+`src/main/resources/db/migration` —**85 tablas de este módulo**, 88 en la base contando la de
+Flyway y las dos del motor de agentes— y Flyway es el dueño del esquema. Cambiar algo de aquí
+ya cuesta una migración nueva, y **una migración aplicada no se edita nunca**: se escribe otra
+encima.
+
+La última, `V19__datos_del_cv_y_dos_pasadas.sql`, trae `dato_cv`: quién es la persona según su
+currículum, sacado por un agente que no puntúa. Ver
+[La criba de currículums](CRIBA-DE-CURRICULUMS.md).
 
 ---
 
@@ -121,8 +128,8 @@ crea una versión con su identificador puesto.
 Esto cambia una cosa que es fácil pasar por alto: **el correo ya no es único a secas, sino único
 dentro de una organización**. La misma persona puede ser candidata en dos empresas distintas.
 
-Añadirlo ahora es casi gratis porque la base está vacía. Añadirlo después es migrar veinticinco
-tablas con datos dentro y revisar cada consulta ya escrita.
+Se puso desde la primera migración, cuando todavía era gratis. Añadirlo hoy habría sido migrar
+veinticinco tablas con datos dentro y revisar cada consulta ya escrita.
 
 ### 2 · La persona está separada de la cuenta, y la cuenta puede venir de fuera
 

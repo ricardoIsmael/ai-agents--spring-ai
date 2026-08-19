@@ -33,11 +33,14 @@ entorno. Flyway, Security, JWT, Validation y Swagger ya estan en el `pom.xml` y 
 Google. **Renaser acepto que los datos de candidatos salgan hacia esos dos** (decision del
 18/08/2026), asi que la pregunta ya no es si salen, sino que el candidato lo sepa.
 
-⚠️ **Los textos de consentimiento todavia no nombran a ningun tercero.** Hoy eso no rompe
-nada porque el modulo de seleccion aun no llama al modelo: la IA no lee ni califica a nadie.
-**Deja de ser cierto en cuanto corran los tres agentes de calificacion del hito 2**, que es
-cuando el curriculum y las respuestas salen de verdad. Renaser tiene que aprobar un texto
-nuevo antes de que pase por ahi el primer candidato real.
+⚠️ **Los textos de consentimiento todavia no nombran a ningun tercero, y esto ya es urgente.**
+Antes no rompia nada porque la IA no leia a nadie. **Desde el 18/08/2026 si lee**: los tres
+agentes del hito 2 corren de verdad y el curriculum sale hacia DeepSeek. Renaser tiene que
+aprobar un texto que nombre a las dos empresas **antes de que pase por ahi el primer candidato
+real**. Hay un borrador en [docs/BORRADOR-CONSENTIMIENTO-v1.1.md](docs/BORRADOR-CONSENTIMIENTO-v1.1.md).
+
+El curriculum se anonimiza antes de salir: edad, sexo y estado civil quedan tapados, y se
+guardan las dos versiones para poder demostrar que la regla se cumplio.
 
 ## RENASER OS
 Es un proyecto avanzado y este backend es un modulo suyo. Son **dos servicios separados que
@@ -52,22 +55,126 @@ hablan por HTTP**: no comparten base de datos, asi que no hay claves foraneas co
 | Tareas, tiempos, bloqueos, retrabajo | Se leen de su API. Alimentan las metricas de la validacion |
 | Objetivos y resultados del personal | Se leen de su API. Es la fuente del seguimiento 30/90/180 |
 
-## Donde estamos (17/08/2026)
-**El hito 1 esta implementado y probado. Los hitos 2 y 3, no.**
+## Donde estamos (18/08/2026)
+**El embudo esta completo de punta a punta**, sin ningun salto manual obligado: postulacion →
+Perfil Integral → prueba del puesto → simulacion → validacion → decision.
+
+| Hito | Estado |
+|---|---|
+| **1** · Solicitud, vacante, postulacion, estados, permisos | Completo |
+| **2** · Perfil Integral (curriculum, evaluacion, Perfil de Talento) | Completo, **con IA corriendo de verdad** |
+| **3** · Prueba del puesto y decision | Completo salvo su calificacion con IA |
+| **Simulacion y validacion** (estaban fuera del MVP) | Construidas |
 
 | | |
 |---|---|
-| Base de datos | **Flyway es el dueno del esquema**: V1-V9 en `src/main/resources/db/migration` crean las 34 tablas del hito 1 con semillas. `ddl-auto: validate`, que gobierna tambien la tabla `agent_run` del modulo de agentes |
-| Codigo | Quince paquetes de dominio bajo `ai_engine` (ver «Como esta organizado el codigo»): seguridad con dos puertas y permisos con alcance, maquina de estados, portal y panel completos del hito 1 |
-| Tests | 20 en verde (12 de seleccion + 8 de agentes): unitario de la maquina, migraciones contra Postgres real (Testcontainers) y el flujo entero de punta a punta (`FlujoHito1IT`) |
+| Base de datos | **Flyway es el dueno del esquema**: V1-V19 en `src/main/resources/db/migration`, **85 tablas de este modulo** (88 en la base contando `flyway_schema_history` y las dos del motor de agentes, `agent_run` y `vector_store`). `ddl-auto: validate` |
+| Codigo | Veintiun paquetes de dominio bajo `ai_engine` (ver «Como esta organizado el codigo») |
+| Tests | **103** (ver «Correr los tests»): unitarios de la maquina y del anonimizador, migraciones contra Postgres real (Testcontainers) y cinco flujos de punta a punta: hito 1, evaluacion, prueba, simulacion/validacion y calificacion con IA |
+| IA que califica | **Tres de los nueve agentes del catalogo estan implementados**: evidencia del curriculum, evaluador y potencial/riesgo. Corren por cola de RabbitMQ contra DeepSeek. Ver [Calificacion con IA](docs/CALIFICACION-CON-IA.md) |
 | Correo | Se registra en `correo_enviado` pero NO se envia: falta el dominio de Renaser (`EnviadorCorreoLog`) |
 | Identidad equipo | `dev-login` de desarrollo; el contrato de RENASER OS no existe aun (`ProveedorIdentidadEquipo`) |
+| Frontend | **Tres, y hacen cosas distintas.** Ver «Las tres pantallas» mas abajo |
 | Mockups | Los mantiene otra persona y **describen la version anterior** |
 
-Reglas al tocar el codigo del hito 1: toda transicion pasa por `MaquinaEstados.transicionar`
-(nunca tocar `postulacion.estado_codigo` a mano); el alcance se aplica en queries via
-`Permisos.alcanceDe`; el esquema solo cambia con una migracion nueva (nunca editar una aplicada).
-Los hitos 2 y 3 estan definidos en el [documento 08](docs/08-ALCANCE-DEL-MVP.md).
+**Lo que falta de codigo:** los agentes que califican la prueba del puesto (`PRUEBA_PUESTO`) y
+que generan las preguntas de la conversacion final (`SIMULACION`). Existen como filas del
+catalogo, sin instruccion sembrada ni clase. Hoy esas dos cosas las hace una persona a mano, en
+las mismas tablas que usaran los agentes.
+
+**Lo que falta y no es codigo** — son decisiones de Renaser que los documentos defieren a
+proposito, no trabajo olvidado:
+
+| Que falta | Que bloquea |
+|---|---|
+| Un **facilitador designado** para la simulacion | La persona que observa la sesion presencial y marca los eventos. El sistema ya sabe que *roles* pueden hacerlo, y es cambiable desde el panel sin desplegar |
+| La **matriz de informacion critica** de una sesion real | La lista de datos que no se le dan al candidato salvo que pregunte. La mecanica esta construida; el contenido lo escribe Renaser |
+| La **figura contractual** de la validacion productiva | El requisito dice literalmente «la figura contractual aprobada por Renaser». Hoy hay un placeholder: `CONTRATO_TEMPORAL_EN_REVISION` |
+| El **contenido real de una prueba del puesto** | Renaser tiene que reescribir una en formato de dos horas |
+
+Otros placeholders puestos a proposito: los **umbrales de los grupos de prioridad (80 y 65)** son
+parametro editable y Renaser no los ha confirmado.
+
+Conocido y aceptado: `FiltroAlcance.responsableOFiltroNulo()` trata el alcance `PROPIO` igual que
+`TODO` —devuelve nulo y no filtra—. Hoy no es alcanzable porque ninguna semilla da un permiso de
+panel con ese alcance, pero si alguien configura un rol asi, veria de mas.
+
+### La criba de curriculums (18/08/2026)
+Contesta «llegaron cien curriculums, a quien invito primero». Antes la IA solo arrancaba
+cuando el candidato entregaba su evaluacion, asi que con una carpeta recien llegada no habia
+forma de pedirla. Cuatro endpoints en `PostulacionesPanelController`:
+
+| Para que | Llamada |
+|---|---|
+| La tanda entera, ordenada de mas apto a menos | `GET /api/v1/panel/vacantes/{id}/ranking` |
+| Primera pasada sobre todos los que no tienen nota | `POST /api/v1/panel/vacantes/{id}/criba-rapida` |
+| Segunda pasada, solo sobre la parte alta | `POST /api/v1/panel/vacantes/{id}/criba-fina` |
+| Releer un curriculum suelto | `POST /api/v1/panel/postulaciones/{id}/criba-cv` |
+
+Dos cosas que no son obvias y cuestan dinero si se ignoran:
+
+- **La primera pasada usa el modelo rapido y no razona.** Sirve para ordenar, no para decidir.
+  Su nota viaja marcada como `RAPIDA` y es provisional.
+- **La segunda pasada se niega a correr si todavia no hay ninguna nota**, porque «los de
+  arriba» no existirian y elegiria por orden alfabetico. Cuanta parte entra lo dice el
+  parametro `porcentaje_criba_fina` (50 por defecto).
+
+Un agente nuevo, `AgenteDatosCv`, saca del curriculum quien es la persona (nombre, ultimo
+puesto, anos de experiencia) y lo guarda en `dato_cv` (migracion `V19`). **No puntua**: por eso
+puede leer datos que los agentes que califican no ven.
+
+**Un PDF escaneado no se puede leer.** Sin texto no hay nada que mandar al modelo, y el sistema
+lo deja fallido en vez de inventar una nota. Los CVs de las semillas son de ese tipo, asi que
+en una base recien sembrada la criba los marca como fallidos: es correcto, no es un fallo.
+
+Ver [La criba de curriculums](docs/CRIBA-DE-CURRICULUMS.md).
+
+### Las tres pantallas
+Ninguna reemplaza a otra, y solo una vive en este repositorio.
+
+| | Donde | Que hace | Como se levanta |
+|---|---|---|---|
+| `frontend/` | **En este repo** | Ranking y ficha del candidato, con los ocho criterios y los hallazgos. **No sube curriculums**: entran por `scripts/cargar-convocatoria.py` | `cd frontend && npm install && npm run dev` (5173) |
+| `RenaserTalentoFrontend` | `~/Documentos/RenaserTalentoFrontend`, fuera de git | Una pagina sola: elegir puesto, **arrastrar curriculums**, lanzar las dos pasadas y ver la tabla. Para ensenar el flujo sin tocar la terminal | `node servidor.js` (3000), sin `npm install` |
+| RENASER OS | `/home/n4nd0/Documentos/RenaserOs`, rama `feat/talento` | El panel de verdad: solicitudes, vacantes, bandeja, ficha, embudo y administracion. React con Vite, **no Next.js** como decian los documentos | Proxy de Vite hacia `localhost:8080` |
+
+Las tres consultan el mismo backend, asi que ensenan el mismo orden.
+
+### Reglas que no se negocian al tocar el codigo
+- Toda transicion pasa por `MaquinaEstados.transicionar`. **Nunca** tocar
+  `postulacion.estado_codigo` a mano.
+- El alcance se aplica dentro de las consultas con `Permisos.alcanceDe`. Un 404 tambien
+  significa «esto no es tuyo».
+- El esquema solo cambia con una migracion nueva. **Nunca** editar una ya aplicada.
+- **Antes de numerar una migracion, mirar cual es la mas alta que existe.** Ricardo tambien crea
+  migraciones: la de simulacion y validacion tuvo que pasar de `V16` a `V18` porque el ya habia
+  tomado esos numeros, y Flyway no arranca con dos del mismo numero.
+- Nada se recalcula hacia atras: cada nota queda atada a la version de pesos de su vacante.
+
+### Correr los tests
+Hace falta Docker levantado (Testcontainers), `renaser-postgres` en el puerto 5433 y RabbitMQ.
+`./mvnw test`.
+
+Desde el merge de `origin/ricardo` del 18/08/2026 son **103 tests** y compilan bien: Ricardo
+arreglo la firma del doble del modelo y sumo unitarios de la cola, del registro de trabajos,
+del panel y **7 reglas de arquitectura con ArchUnit** (la frontera del motor, las capas y que
+el estado solo lo mueva la maquina — las mismas reglas que este archivo tiene en prosa).
+
+**El test que gasta dinero ya no corre solo**: `CalificacionIaRealIT` esta detras de la
+variable `RENASER_IA_REAL`. `./mvnw test` a secas ya es seguro y no llama a DeepSeek.
+
+⚠️ **Cada ejecucion cuesta dinero.** El `pom.xml` mete `**/*IT.java` en los `includes` de
+surefire, asi que `CalificacionIaRealIT` corre siempre y hace **cuatro llamadas reales a
+DeepSeek**. Para saltarlo:
+
+```
+./mvnw test -Dtest='*Test,*Tests,*IT,!CalificacionIaRealIT' -Dsurefire.failIfNoSpecifiedTests=false
+```
+
+**Ruido esperado que NO es un fallo**: `Failed to check/redeclare auto-delete queue(s)` de
+RabbitMQ, y los reintentos agotados de `CalificacionIaRealIT` («el proveedor del modelo no
+responde»), que es un test que llama a DeepSeek de verdad y registra el fallo si no hay clave o
+red. Si termina en `BUILD SUCCESS`, esta bien.
 
 ## Como esta organizado el codigo
 Un solo proyecto para dos cosas: el modulo de seleccion de personal y el motor de agentes de
@@ -109,6 +216,12 @@ com.renaser.ai.ai_engine.<dominio>
 | `administracion` | La cara de configuracion del panel |
 | `seguridad` | Las dos puertas, tokens, contexto y permisos con alcance |
 | `comun` | El manejador de errores propio y el candado de Swagger |
+| `catalogo` | Los catalogos que el panel consulta |
+| `perfilintegral` | Evaluacion, criterios, notas y el Perfil de Talento (hito 2) |
+| `prueba` | La prueba del puesto: plantillas, intentos y entregables (hito 3) |
+| `decision` | La decision final, sus barreras y evidencias (hito 3) |
+| `simulacion` | Sesiones, inscripciones, eventos observables y conversacion final |
+| `validacion` | El periodo de validacion practica y sus metricas |
 
 Dos clases marcan la frontera con el motor de agentes y **hay que actualizarlas al anadir un
 controlador nuevo**, porque enumeran los nuestros: `comun/exception/ManejadorErrores` (para que
@@ -137,10 +250,13 @@ Todo vive en `docs/`. Empezar por [docs/README.md](docs/README.md).
 - [Las APIs](docs/09-APIS.md) — las dos puertas (portal/panel), como entrar y que hace cada
   endpoint. La referencia viva es Swagger en `/swagger-ui.html`.
 - [Alcance del MVP](docs/08-ALCANCE-DEL-MVP.md) — **el cliente quiere un MVP, no el sistema
-  completo.** Tres hitos: 34 tablas, 62 y 73, cada uno usable solo. **El hito 1 ya esta
-  implementado.** Dice tambien que se deja
+  completo.** Tres hitos: 34 tablas, 62 y 73, cada uno usable solo. Dice tambien que se deja
   puesto desde el hito 1 para no reescribir despues. **Leerlo antes de escribir cualquier
   migracion.**
+- [Calificacion con IA](docs/CALIFICACION-CON-IA.md) — como la IA lee el curriculum, califica lo
+  abierto y arma el Perfil de Talento. Y que pasa cuando falla.
+- [Avance de simulacion y validacion](docs/AVANCE-SIMULACION-VALIDACION-2026-08-18.md) — las dos
+  ultimas etapas y sus tres reglas automaticas de disponibilidad.
 - `docs/diagramas/` — HTML autocontenidos, se abren en el navegador.
 - `docs/mockups/` — prototipos de pantalla. **Los mantiene otra persona, no editarlos.**
 - `docs/insumos/` — documentos originales del cliente y notas de analisis.
@@ -171,10 +287,10 @@ por detras de una caja ni texto desbordado.
 Documentos clave (leer antes de trabajar):
 - [Que cambia con el documento nuevo](docs/insumos/CAMBIOS-DEL-DOCUMENTO-NUEVO.md) — que trajo
   el documento del 14/08, que contradice y **que se decidio en cada punto**.
-- [Que documento manda](docs/insumos/ANALISIS-DOCUMENTOS.md) — orden de precedencia y estado de
-  cada documento del repositorio.
-- [Decisiones tomadas](docs/insumos/DECISIONES.md) — arquitectura, embudo, roles y reglas ya cerradas.
-  ⚠️ Todavia describe la version anterior en varios puntos.
+- [Que documento manda](docs/insumos/ANALISIS-DOCUMENTOS.md) — orden de precedencia, estado de
+  cada documento del repositorio y las decisiones anteriores al 14/08. `DECISIONES.md`, la
+  bitacora del 14/08 y el reporte del 17/08 se borraron el 18/08/2026: repetian lo que ya dicen
+  este documento y los de avance, y ademas lo decian desactualizado.
 - [La comprobacion](docs/insumos/COMPROBACION-SIN-TECNICA.md) — el rastreo de las 93 tablas
   contra el documento 00, y de donde salen los conteos de cada hito.
 - [Notas temporales](docs/insumos/NOTAS-TEMPORALES.md) — lo que sigue pendiente.
@@ -217,5 +333,42 @@ El cliente realiza cambios recurrentemente, ya sea en métricas, en datos, en pe
 
 ## Git
 No crees commits poro favor, para poder visualizar los cambios que se realizaron, yo creo commits y los pr. No lo hagas amenos que te lo pida explicitamente
+
+## Mantener este archivo al dia
+**Este archivo es lo primero que lee una sesion nueva. Si miente, la sesion trabaja sobre una
+idea falsa del proyecto** — ya paso: decia «hito 1 implementado, hitos 2 y 3 no» cuando el
+embudo ya estaba completo.
+
+**Al terminar de implementar una funcionalidad, actualiza «Donde estamos» antes de dar el
+resumen final.** No al empezar ni a mitad: cuando la funcionalidad ya funciona y sus tests
+pasan.
+
+Que se actualiza:
+
+| Si cambio... | Actualizar |
+|---|---|
+| Se implemento una funcionalidad o se cerro un hito | La tabla de hitos y «lo que falta de codigo» |
+| Se anadio una migracion | El rango `V1-Vxx` |
+| Cambio el numero de tests | La fila de tests |
+| Se anadio un paquete de dominio | Su tabla y el conteo de paquetes |
+| Un pendiente dejo de serlo, o aparecio uno nuevo | Las tablas de «lo que falta» |
+| Un placeholder se reemplazo por el valor definitivo | Donde se nombre ese placeholder |
+
+Reglas al escribirlo:
+- **Fechar la seccion** con la fecha del cambio.
+- **Borrar lo que dejo de ser cierto**, no acumular. Este archivo se lee entero cada sesion:
+  cuanto mas largo, menos se sostiene.
+- **Verificar antes de escribir.** El numero de tests sale de correrlos, no de recordarlos.
+- Es un mapa para orientarse, no un historial. **Lo que se hizo un dia concreto va en un
+  documento de avance en `docs/`**, y aqui solo queda el estado presente.
+
+## PROMPTs para cada respuesta que me des
+
+Keep responses focused, brief, and concise. Keep disclaimers and caveats short, and spend most of the response on the main answer. When asked to explain something, give a high-level summary unless an in-depth explanation is specifically requested.
+
+Before your first tool call, say in one sentence what you're about to do. While working, give a brief update only when you find something important or change direction. When you finish, lead with the outcome: your first sentence should answer "what happened" or "what did you find," with supporting detail after it for readers who want it.
+
+
+
 
 
