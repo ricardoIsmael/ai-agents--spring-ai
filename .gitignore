@@ -30,10 +30,10 @@ build/
 !**/src/test/**/build/
 
 ### VS Code ###
-.vscode/
 
 ### Secrets (nunca commitear) ###
 application-secrets.yaml
+temp_auto_push.bat
 
 ### Graphify (cache local, se regenera con `graphify .`) ###
 graphify-out/
@@ -70,3 +70,5 @@ __pycache__/
 # El .env del despliegue lleva las mismas claves que application-secrets.yaml
 .env
 despliegue/.env
+.gitignore
+branch_structure.json
