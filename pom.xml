@@ -31,7 +31,7 @@
 		<spring-ai.version>2.0.0</spring-ai.version>
 		<org.mapstruct.version>1.6.3</org.mapstruct.version>
 		<!-- springdoc 3.x es la linea para Spring Boot 4. La 2.x es de Boot 3 y no arranca aqui -->
-		<springdoc.version>3.1.0</springdoc.version>
+		<springdoc.version>3.1.1</springdoc.version>
 		<testcontainers.version>2.0.5</testcontainers.version>
 		<!-- La misma que ya traia spring-ai-pdf-document-reader: no baja nada nuevo -->
 		<pdfbox.version>3.0.7</pdfbox.version>
