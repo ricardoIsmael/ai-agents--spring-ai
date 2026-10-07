@@ -5,8 +5,8 @@
   "type": "module",
   "description": "La cara visual de la criba: quien mira una tanda de curriculums y decide a quien invitar",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
+    "dev": "node api.js && vite",
+    "build": "node api.js && vite build",
     "preview": "vite preview",
     "dev:demo": "vite --mode demo",
     "build:demo": "vite build --mode demo"
